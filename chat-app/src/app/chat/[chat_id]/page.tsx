@@ -14,7 +14,8 @@ export default function Page() {
         }),
     });
     const [input, setInput] = useState('');
-    const [model, setModel] = useState("deepseek-r1");
+    const [model, setModel] = useState('gpt-4');
+    const [data, setData] = useState('');
 
     const endRef = useRef<HTMLDivElement>(null);
 
@@ -25,7 +26,7 @@ export default function Page() {
     }, [messages]);
 
     const handleChangeModel = () => {
-        setModel(model === 'deepseek-v3' ? 'deepseek-r1' : 'deepseek-v3');
+        setModel(model === 'gpt-4' ? 'deepseek' : 'gpt-4');
     };
 
     const handleSubmit = () => {
@@ -34,6 +35,16 @@ export default function Page() {
             setInput('');
         }
     };
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const response = await fetch('/api/database', { method: 'GET' });
+            const data = await response.json();
+            console.log(data);
+            setData(data);
+        }
+        fetchData();
+    }, []);
 
     return (
         <div className='flex flex-col h-screen justify-between items-center'>
@@ -70,8 +81,8 @@ export default function Page() {
                 <div className="flex flex-row items-center justify-between w-full h-12 mb-2">
                     <div>
                         <div className={`flex flex-row items-center justify-center rounded-lg border-[1px] px-2 py-1 ml-2 cursor-pointer
-                            ${model === 'deepseek-r1' ? "border-blue-300 bg-blue-200" : "border-gray-300"}`} onClick={handleChangeModel}>
-                            <p className="text-sm">DeepSeek R1</p>
+                            ${model === 'gpt-4' ? "border-blue-300 bg-blue-200" : "border-gray-300"}`} onClick={handleChangeModel}>
+                            <p className="text-sm">gpt-4</p>
                         </div>
                     </div>
                     <div className="flex items-center justify-center border-2 mr-4 border-black p-1 rounded-full"
@@ -80,26 +91,13 @@ export default function Page() {
                     </div>
                 </div>
             </div>
-
-            {/* <form
-                onSubmit={e => {
-                    e.preventDefault();
-                    if (input.trim()) {
-                        sendMessage({ text: input });
-                        setInput('');
-                    }
-                }}
-            >
-                <input
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    disabled={status !== 'ready'}
-                    placeholder="Say something..."
-                />
-                <button type="submit" disabled={status !== 'ready'}>
-                    Submit
-                </button>
-            </form> */}
+            <div>
+                <textarea
+                    className="w-full rounded-lg p-3 h-30 focus:outline-none"
+                    value={data}
+                    readOnly
+                ></textarea>
+            </div>
         </div>
     );
 }
