@@ -1,1 +1,1 @@
-# chatApp
+# next.jsで作ったチャットアプリ

@@ -1,12 +1,29 @@
 'use client'
 
-import React, { useState } from "react";
+import React, { use, useState } from "react";
 import EastIcon from "@mui/icons-material/East";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/dist/client/components/navigation";
+import axios from "axios";
 
 export default function Page() {
 
   const [input, setInput] = useState("");
   const [model, setModel] = useState("gpt-4");
+
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  const { mutate } = useMutation({
+    mutationFn: async (input: string) => {
+      return axios.post("/api/chats", { userId: "user123", title: input, model });
+    },
+    onSuccess: (res) => {
+      console.log("Mutation successful:", res);
+      router.push(`/chat/${res.data.id}`);
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    }
+  });
 
   return (
     <div className="h-screen flex flex-col items-center">

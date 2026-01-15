@@ -10,7 +10,7 @@ import EastIcon from "@mui/icons-material/East";
 export default function Page() {
     const { messages, sendMessage, status } = useChat({
         transport: new DefaultChatTransport({
-            api: '/api/chat',
+            api: '/api/openai',
         }),
     });
     const [input, setInput] = useState('');
@@ -29,10 +29,18 @@ export default function Page() {
         setModel(model === 'gpt-4' ? 'deepseek' : 'gpt-4');
     };
 
-    const handleSubmit = () => {
-        if (input.trim()) {
-            sendMessage({ text: input });
+    const handleSubmit = async () => {
+        console.log('handleSubmit clicked, input:', input);
+        if (!input.trim()) {
+            console.log('Input is empty');
+            return;
+        }
+        try {
+            console.log('Sending message:', input);
+            await sendMessage({ text: input });
             setInput('');
+        } catch (error) {
+            console.error('Error sending message:', error);
         }
     };
 
