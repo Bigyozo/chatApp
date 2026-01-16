@@ -1,5 +1,7 @@
+import {
+    createChat, deleteChat, getAllChats, getChatById, getChatsByUserId, updateChat
+} from '@/lib/dynamodb';
 import { NextRequest, NextResponse } from 'next/server';
-import { getChatById, getChatsByUserId, getAllChats } from '@/lib/dynamodb';
 
 /**
  * GET /api/chats
@@ -39,4 +41,88 @@ export async function GET(request: NextRequest) {
     }
 }
 
+
+/**
+ * POST 方法：创建新的聊天记录
+ * 请求体：{ userId: string, title: string, model: string }
+ */
+export async function POST(req: Request) {
+    try {
+        const body = await req.json();
+        const { userId, title, model } = body;
+
+        if (!userId || !title || !model) {
+            return NextResponse.json(
+                { error: "userId, title, and model are required" },
+                { status: 400 }
+            );
+        }
+
+        const newChat = await createChat(userId, title, model);
+        return NextResponse.json(newChat, { status: 200 });
+    } catch (error) {
+        console.error("Error in POST /api/database:", error);
+        return NextResponse.json(
+            { error: "Failed to create chat" },
+            { status: 500 }
+        );
+    }
+}
+
+/**
+ * PUT 方法：更新聊天记录
+ * 请求体：{ chatId: string, updates: Partial<ChatModel> }
+ */
+export async function PUT(req: Request) {
+    try {
+        const body = await req.json();
+        const { chatId, updates } = body;
+
+        if (!chatId || !updates) {
+            return NextResponse.json(
+                { error: "chatId and updates are required" },
+                { status: 400 }
+            );
+        }
+
+        const updatedChat = await updateChat(chatId, updates);
+        return NextResponse.json(updatedChat, { status: 200 });
+    } catch (error) {
+        console.error("Error in PUT /api/database:", error);
+        return NextResponse.json(
+            { error: "Failed to update chat" },
+            { status: 500 }
+        );
+    }
+}
+
+/**
+ * DELETE 方法：删除聊天记录
+ * 请求体：{ chatId: string }
+ */
+export async function DELETE(req: Request) {
+    try {
+        const body = await req.json();
+        const { chatId } = body;
+
+        if (!chatId) {
+            return NextResponse.json(
+                { error: "chatId is required" },
+                { status: 400 }
+            );
+        }
+
+        await deleteChat(chatId);
+        return NextResponse.json(
+            { message: "Chat deleted successfully" },
+            { status: 200 }
+        );
+    } catch (error) {
+        console.error("Error in DELETE /api/database:", error);
+        return NextResponse.json(
+            { error: "Failed to delete chat" },
+            { status: 500 }
+        );
+    }
+}
 

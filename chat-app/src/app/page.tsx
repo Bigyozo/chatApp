@@ -1,10 +1,10 @@
 'use client'
 
-import React, { use, useState } from "react";
 import EastIcon from "@mui/icons-material/East";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/dist/client/components/navigation";
 import axios from "axios";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function Page() {
 
@@ -14,7 +14,7 @@ export default function Page() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  const { mutate } = useMutation({
+  const { mutate: createChat } = useMutation({
     mutationFn: async (input: string) => {
       return axios.post("/api/chats", { userId: "user123", title: input, model });
     },
@@ -24,6 +24,14 @@ export default function Page() {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     }
   });
+
+  const handleSubmit = () => {
+    if (!input.trim()) {
+      console.log("Input is empty");
+      return;
+    }
+    createChat(input);
+  };
 
   return (
     <div className="h-screen flex flex-col items-center">
@@ -48,7 +56,7 @@ export default function Page() {
                 <p className="text-sm">gpt-4</p>
               </div>
             </div>
-            <div className="flex items-center justify-center border-2 mr-4 border-black p-1 rounded-full">
+            <div className="flex items-center justify-center border-2 mr-4 border-black p-1 rounded-full" onClick={handleSubmit}>
               <EastIcon />
             </div>
           </div>

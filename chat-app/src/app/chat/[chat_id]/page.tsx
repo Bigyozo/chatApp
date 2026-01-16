@@ -15,7 +15,6 @@ export default function Page() {
     });
     const [input, setInput] = useState('');
     const [model, setModel] = useState('gpt-4');
-    const [data, setData] = useState('');
 
     const endRef = useRef<HTMLDivElement>(null);
 
@@ -44,16 +43,6 @@ export default function Page() {
         }
     };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            const response = await fetch('/api/database', { method: 'GET' });
-            const data = await response.json();
-            console.log(data);
-            setData(data);
-        }
-        fetchData();
-    }, []);
-
     return (
         <div className='flex flex-col h-screen justify-between items-center'>
             <div className='flex flex-col w-2/3 gap-8 overflow-y-auto justify-between flex-1'>
@@ -77,8 +66,8 @@ export default function Page() {
             </div>
 
             <div
-                className="flex flex-col items-center justify-center mt-4 shadow-lg
-                border-[1px] border-gray-300 h-32 rounded-lg w-2/3"
+                className="flex flex-col items-center justify-center shadow-lg
+                border-[1px] border-gray-300 h-32 rounded-lg w-2/3 mb-5"
             >
                 <textarea
                     className="w-full rounded-lg p-3 h-30 focus:outline-none"
@@ -98,13 +87,6 @@ export default function Page() {
                         <EastIcon />
                     </div>
                 </div>
-            </div>
-            <div>
-                <textarea
-                    className="w-full rounded-lg p-3 h-30 focus:outline-none"
-                    value={data}
-                    readOnly
-                ></textarea>
             </div>
         </div>
     );
