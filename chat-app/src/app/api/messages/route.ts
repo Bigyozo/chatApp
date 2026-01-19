@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-    getMessageById, 
-    getMessagesByChatId, 
-    getAllMessages,
+import {
+    getMessagesByChatId,
     createMessage,
     updateMessage,
     deleteMessage,
@@ -11,25 +9,15 @@ import {
 /**
  * GET /api/messages
  * 查询参数:
- *   - messageId: 获取单个消息
  *   - chatId: 获取该聊天的所有消息
- *   - all: true 获取所有消息
  */
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
-        const messageId = searchParams.get('messageId');
         const chatId = searchParams.get('chatId');
-        const all = searchParams.get('all');
 
-        if (messageId) {
-            const message = await getMessageById(messageId);
-            return NextResponse.json(message);
-        } else if (chatId) {
+        if (chatId) {
             const messages = await getMessagesByChatId(chatId);
-            return NextResponse.json(messages);
-        } else if (all === 'true') {
-            const messages = await getAllMessages();
             return NextResponse.json(messages);
         } else {
             return NextResponse.json(

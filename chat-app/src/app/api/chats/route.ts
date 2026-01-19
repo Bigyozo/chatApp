@@ -1,5 +1,5 @@
 import {
-    createChat, deleteChat, getAllChats, getChatById, getChatsByUserId, updateChat
+    createChat, deleteChat, getAllChats, getChatById, getChatsByUserId, getChatsByUserIdAndChatId, updateChat
 } from '@/lib/dynamodb';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -14,18 +14,22 @@ export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
         const chatId = searchParams.get('chatId');
-        const userId = searchParams.get('userId');
+        const userId = 'user123'; // 临时使用固定用户ID，后续应从认证系统获取
         const all = searchParams.get('all');
 
-        if (chatId) {
-            const chat = await getChatById(chatId);
-            return NextResponse.json(chat);
-        } else if (userId) {
-            const chats = await getChatsByUserId(userId);
-            return NextResponse.json(chats);
+        if(!userId) {
+            return NextResponse.json(
+                { error: 'Unauthorized: userId is required' },
+                { status: 401 }
+            );
+        }
+
+        if (chatId && userId) {
+            const chats = await getChatsByUserIdAndChatId(userId, chatId);
+            return NextResponse.json(chats, { status: 200 });
         } else if (all === 'true') {
             const chats = await getAllChats();
-            return NextResponse.json(chats);
+            return NextResponse.json(chats, { status: 200 });
         } else {
             return NextResponse.json(
                 { error: 'Missing required query parameters' },

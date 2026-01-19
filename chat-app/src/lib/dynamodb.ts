@@ -1,8 +1,8 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { 
-    DynamoDBDocumentClient, 
-    GetCommand, 
-    QueryCommand, 
+import {
+    DynamoDBDocumentClient,
+    GetCommand,
+    QueryCommand,
     ScanCommand,
     PutCommand,
     UpdateCommand,
@@ -29,6 +29,7 @@ const MESSAGE_TABLE_NAME = 'chatapp_message';
  */
 export async function getChatById(chatId: string): Promise<ChatModel | null> {
     try {
+        console.log('Getting chat by ID:', chatId);
         const command = new GetCommand({
             TableName: CHAT_TABLE_NAME,
             Key: { id: chatId },
@@ -58,6 +59,32 @@ export async function getChatsByUserId(userId: string): Promise<ChatModel[]> {
         return (response.Items as ChatModel[]) || [];
     } catch (error) {
         console.error('Error getting chats by user ID:', error);
+        throw error;
+    }
+}
+
+/**
+ * 通过用户ID与Chat ID获取所有聊天记录
+ */
+export async function getChatsByUserIdAndChatId(userId: string, chatId: string): Promise<ChatModel[]> {
+    try {
+        console.log('Getting chats by User ID and Chat ID:', userId, chatId);
+        // 先通过 userId 查询，然后客户端过滤
+        const command = new QueryCommand({
+            TableName: CHAT_TABLE_NAME,
+            IndexName: 'userIdIndex',
+            KeyConditionExpression: 'userId = :userId',
+            ExpressionAttributeValues: {
+                ':userId': userId,
+            },
+        });
+        const response = await docClient.send(command);
+        const items = (response.Items as ChatModel[]) || [];
+
+        // 客户端过滤 chatId
+        return items.filter(item => item.id === chatId);
+    } catch (error) {
+        console.error('Error:', error);
         throw error;
     }
 }
@@ -173,8 +200,7 @@ export async function getMessagesByChatId(chatId: string): Promise<MessageModel[
             KeyConditionExpression: 'chatId = :chatId',
             ExpressionAttributeValues: {
                 ':chatId': chatId,
-            },
-            ScanIndexForward: true, // 按时间升序排列
+            }
         });
         const response = await docClient.send(command);
         return (response.Items as MessageModel[]) || [];

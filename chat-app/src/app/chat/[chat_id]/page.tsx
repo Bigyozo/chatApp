@@ -1,20 +1,74 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
+import { DefaultChatTransport, UIMessage } from 'ai';
 import { useEffect } from 'react';
 import { useRef } from 'react';
 import { useState } from 'react';
 import EastIcon from "@mui/icons-material/East";
+import { useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 
 export default function Page() {
+
+    const { chat_id } = useParams();
+
+    const [model, setModel] = useState('gpt-4.1-mini');
+    const handleChangeModel = () => {
+        setModel(model === 'gpt-4.1-mini' ? 'deepseek' : 'gpt-4.1-mini');
+    };
+
+    const { data: chat } = useQuery({
+        queryKey: ['chat', chat_id],
+        queryFn: async () => {
+            return axios.get(`/api/chats?chatId=${chat_id}`);
+        }
+    });
+
+    const { data: previousMessages } = useQuery({
+        queryKey: ['messages', chat_id],
+        queryFn: async () => {
+            return axios.get(`/api/messages?chatId=${chat_id}`);
+        },
+        enabled: !!chat?.data?.[0]?.id,
+    });
+
     const { messages, sendMessage, status } = useChat({
         transport: new DefaultChatTransport({
             api: '/api/openai',
-        }),
+            body: { model, chat_id, chat_user_id: chat?.data?.[0]?.userId },
+        })
     });
+
+    const [allMessages, setAllMessages] = useState<UIMessage[]>([]);
+
+    // 初始化历史消息
+    useEffect(() => {
+        if (previousMessages?.data) {
+            const formattedMessages = previousMessages.data.map((msg: any) => ({
+                id: msg.id,
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content,
+                parts: [{ type: 'text', text: msg.content }],
+            }));
+            setAllMessages(formattedMessages);
+        }
+    }, [previousMessages?.data]);
+
+    // 追加新消息
+    useEffect(() => {
+        if (messages.length > 0) {
+            setAllMessages(prev => {
+                const lastMsg = prev[prev.length - 1];
+                const newMsgs = messages.filter(msg => msg.id !== lastMsg?.id);
+                return [...prev, ...newMsgs];
+            });
+        }
+    }, [messages]);
+
+
     const [input, setInput] = useState('');
-    const [model, setModel] = useState('gpt-4');
 
     const endRef = useRef<HTMLDivElement>(null);
 
@@ -24,9 +78,6 @@ export default function Page() {
         }
     }, [messages]);
 
-    const handleChangeModel = () => {
-        setModel(model === 'gpt-4' ? 'deepseek' : 'gpt-4');
-    };
 
     const handleSubmit = async () => {
         console.log('handleSubmit clicked, input:', input);
@@ -48,7 +99,7 @@ export default function Page() {
             <div className='flex flex-col w-2/3 gap-8 overflow-y-auto justify-between flex-1'>
                 <div className='h-4'></div>
                 <div className='h-flex flex-col w-2/3 gap-8 flex-1'></div>
-                {messages.map(message => (
+                {allMessages.map(message => (
                     <div key={message.id}
                         className={`rounded-lg flex flex-row ${message.role === "assistant" ? "justify-start mr-18" : "justify-end ml-10"}`}
                     >
