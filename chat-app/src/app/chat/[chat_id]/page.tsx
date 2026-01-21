@@ -15,6 +15,7 @@ export default function Page() {
     const { chat_id } = useParams();
 
     const [model, setModel] = useState('gpt-4.1-mini');
+
     const handleChangeModel = () => {
         setModel(model === 'gpt-4.1-mini' ? 'deepseek' : 'gpt-4.1-mini');
     };
@@ -37,7 +38,7 @@ export default function Page() {
     const { messages, sendMessage, status } = useChat({
         transport: new DefaultChatTransport({
             api: '/api/openai',
-            body: { model, chat_id, chat_user_id: chat?.data?.[0]?.userId },
+            body: { model, chat_id },
         })
     });
 
@@ -60,8 +61,8 @@ export default function Page() {
     useEffect(() => {
         if (messages.length > 0) {
             setAllMessages(prev => {
-                const lastMsg = prev[prev.length - 1];
-                const newMsgs = messages.filter(msg => msg.id !== lastMsg?.id);
+                const prevIds = prev.map(msg => msg.id);
+                const newMsgs = messages.filter(msg => !prevIds.includes(msg.id));
                 return [...prev, ...newMsgs];
             });
         }
@@ -76,7 +77,7 @@ export default function Page() {
         if (endRef.current) {
             endRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [messages]);
+    }, [allMessages]);
 
 
     const handleSubmit = async () => {
