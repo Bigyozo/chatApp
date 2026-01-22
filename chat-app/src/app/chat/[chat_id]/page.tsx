@@ -30,7 +30,9 @@ export default function Page() {
     const { data: previousMessages } = useQuery({
         queryKey: ['messages', chat_id],
         queryFn: async () => {
-            return axios.get(`/api/messages?chatId=${chat_id}`);
+            const result = await axios.get(`/api/messages?chatId=${chat_id}`);
+            setHasQuery(true);
+            return result;
         },
         enabled: !!chat?.data?.[0]?.id,
     });
@@ -43,6 +45,8 @@ export default function Page() {
     });
 
     const [allMessages, setAllMessages] = useState<UIMessage[]>([]);
+    const [hasInitialized, setHasInitialized] = useState(false);
+    const [hasQuery, setHasQuery] = useState(false);
 
     // 初始化历史消息
     useEffect(() => {
@@ -95,6 +99,19 @@ export default function Page() {
         }
     };
 
+    useEffect(() => {
+        const chatTitle = chat?.data?.[0]?.title;
+        const messageCount = previousMessages?.data?.length;
+
+        const handleFirstMessage = async () => {
+            if (chatTitle && messageCount === 0 && !hasInitialized && hasQuery) {
+                await sendMessage({ text: chatTitle });
+                setHasInitialized(true);
+            }
+        };
+        handleFirstMessage();
+    }, [chat?.data, previousMessages?.data, sendMessage, hasInitialized, hasQuery]);
+
     return (
         <div className='flex flex-col h-screen justify-between items-center'>
             <div className='flex flex-col w-2/3 gap-8 overflow-y-auto justify-between flex-1'>
@@ -130,8 +147,8 @@ export default function Page() {
                 <div className="flex flex-row items-center justify-between w-full h-12 mb-2">
                     <div>
                         <div className={`flex flex-row items-center justify-center rounded-lg border-[1px] px-2 py-1 ml-2 cursor-pointer
-                            ${model === 'gpt-4' ? "border-blue-300 bg-blue-200" : "border-gray-300"}`} onClick={handleChangeModel}>
-                            <p className="text-sm">gpt-4</p>
+                            ${model === 'gpt-4.1-mini' ? "border-blue-300 bg-blue-200" : "border-gray-300"}`} onClick={handleChangeModel}>
+                            <p className="text-sm">gpt-4.1-mini</p>
                         </div>
                     </div>
                     <div className="flex items-center justify-center border-2 mr-4 border-black p-1 rounded-full"

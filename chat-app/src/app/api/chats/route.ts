@@ -1,5 +1,6 @@
 import {
-    createChat, deleteChat, getAllChats, getChatById, getChatsByUserId, getChatsByUserIdAndChatId, updateChat
+    createChat, deleteChat, getAllChats,
+    getChatsByUserIdAndChatId, updateChat
 } from '@/lib/dynamodb';
 import { NextRequest, NextResponse } from 'next/server';
 
