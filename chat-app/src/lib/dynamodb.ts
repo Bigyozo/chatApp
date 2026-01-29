@@ -11,13 +11,21 @@ import {
 import { ChatModel, MessageModel } from '../common/type';
 
 // 初始化 DynamoDB 客户端
-const client = new DynamoDBClient({
-    region: process.env.AWS_REGION || 'us-east-1',
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-    },
-});
+// 如果提供了 AWS 凭证环境变量，则使用它们
+// 否则使用默认凭证链（IAM 角色、环境变量等）
+const clientConfig: any = {
+    region: process.env.AWS_REGION || 'ap-northeast-1',
+};
+
+// 只有当明确设置了 AWS 凭证时才添加 credentials
+if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+    clientConfig.credentials = {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    };
+}
+
+const client = new DynamoDBClient(clientConfig);
 
 const docClient = DynamoDBDocumentClient.from(client);
 
