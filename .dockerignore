@@ -1,0 +1,43 @@
+# Dependencies
+chat-app/node_modules
+node_modules
+
+# Next.js build output
+chat-app/.next
+.next
+
+# Environment files (don't include in image, use runtime env vars)
+chat-app/.env.local
+chat-app/.env*.local
+.env.local
+.env*.local
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+chat-app/README.md
+README.md
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# DevContainer
+.devcontainer
