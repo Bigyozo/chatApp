@@ -1,7 +1,5 @@
 'use client';
 
-import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport, UIMessage } from 'ai';
 import { useEffect } from 'react';
 import { useRef } from 'react';
 import { useState } from 'react';
@@ -9,16 +7,13 @@ import EastIcon from "@mui/icons-material/East";
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+import { useBedrockChat } from '@/hooks/useBedrockChat';
 
 export default function Page() {
 
     const { chat_id } = useParams();
 
-    const [model, setModel] = useState('gpt-4.1-mini');
-
-    const handleChangeModel = () => {
-        setModel(model === 'gpt-4.1-mini' ? 'deepseek' : 'gpt-4.1-mini');
-    };
+    const [model, setModel] = useState('Gemma 3 4B');
 
     const { data: chat } = useQuery({
         queryKey: ['chat', chat_id],
@@ -27,62 +22,56 @@ export default function Page() {
         }
     });
 
+    // 从数据库中获取 model 并初始化下拉列表
+    useEffect(() => {
+        const chatModel = chat?.data?.[0]?.model;
+        if (chatModel) {
+            setModel(chatModel);
+        }
+    }, [chat?.data]);
+
     const { data: previousMessages } = useQuery({
         queryKey: ['messages', chat_id],
         queryFn: async () => {
             const result = await axios.get(`/api/messages?chatId=${chat_id}`);
-            setHasQuery(true);
             return result;
         },
         enabled: !!chat?.data?.[0]?.id,
     });
 
-    const { messages, sendMessage, status } = useChat({
-        transport: new DefaultChatTransport({
-            api: '/api/openai',
-            body: { model, chat_id },
-        })
-    });
+    // 使用自定义的 Bedrock Chat hook
+    const { messages, sendMessage, isLoading, loadHistory } = useBedrockChat(
+        typeof chat_id === 'string' ? chat_id : '',
+        model
+    );
 
-    const [allMessages, setAllMessages] = useState<UIMessage[]>([]);
     const [hasInitialized, setHasInitialized] = useState(false);
-    const [hasQuery, setHasQuery] = useState(false);
+    const [historyLoaded, setHistoryLoaded] = useState(false);
 
-    // 初始化历史消息
+    // 初始化历史消息 - 只运行一次
     useEffect(() => {
-        if (previousMessages?.data) {
-            const formattedMessages = previousMessages.data.map((msg: any) => ({
-                id: msg.id,
-                role: msg.role as 'user' | 'assistant',
-                content: msg.content,
-                parts: [{ type: 'text', text: msg.content }],
-            }));
-            setAllMessages(formattedMessages);
+        if (previousMessages?.data && !historyLoaded) {
+            const formattedMessages = previousMessages.data
+                .filter((msg: any) => msg.content && msg.content.trim().length > 0)
+                .map((msg: any) => ({
+                    id: msg.id,
+                    role: msg.role as 'user' | 'assistant',
+                    content: msg.content,
+                    parts: [{ type: 'text', text: msg.content }],
+                }));
+            loadHistory(formattedMessages);
+            setHistoryLoaded(true);
         }
-    }, [previousMessages?.data]);
-
-    // 追加新消息
-    useEffect(() => {
-        if (messages.length > 0) {
-            setAllMessages(prev => {
-                const prevIds = prev.map(msg => msg.id);
-                const newMsgs = messages.filter(msg => !prevIds.includes(msg.id));
-                return [...prev, ...newMsgs];
-            });
-        }
-    }, [messages]);
-
+    }, [previousMessages?.data, historyLoaded, loadHistory]);
 
     const [input, setInput] = useState('');
-
     const endRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (endRef.current) {
             endRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [allMessages]);
-
+    }, [messages]);
 
     const handleSubmit = async () => {
         console.log('handleSubmit clicked, input:', input);
@@ -92,44 +81,50 @@ export default function Page() {
         }
         try {
             console.log('Sending message:', input);
-            await sendMessage({ text: input });
+            await sendMessage(input);
             setInput('');
         } catch (error) {
             console.error('Error sending message:', error);
         }
     };
 
+    // 自动发送第一条消息 - 只运行一次
     useEffect(() => {
         const chatTitle = chat?.data?.[0]?.title;
         const messageCount = previousMessages?.data?.length;
 
-        const handleFirstMessage = async () => {
-            if (chatTitle && messageCount === 0 && !hasInitialized && hasQuery) {
-                await sendMessage({ text: chatTitle });
-                setHasInitialized(true);
-            }
-        };
-        handleFirstMessage();
-    }, [chat?.data, previousMessages?.data, sendMessage, hasInitialized, hasQuery]);
+        if (chatTitle && messageCount === 0 && !hasInitialized && historyLoaded) {
+            sendMessage(chatTitle);
+            setHasInitialized(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chat?.data, previousMessages?.data, hasInitialized, historyLoaded]);
 
     return (
         <div className='flex flex-col h-screen justify-between items-center'>
             <div className='flex flex-col w-2/3 gap-8 overflow-y-auto justify-between flex-1'>
                 <div className='h-4'></div>
                 <div className='h-flex flex-col w-2/3 gap-8 flex-1'></div>
-                {allMessages.map(message => (
+                {messages.map(message => (
                     <div key={message.id}
                         className={`rounded-lg flex flex-row ${message.role === "assistant" ? "justify-start mr-18" : "justify-end ml-10"}`}
                     >
                         <p className={`inline-block p-2 rounded-lg ${message?.role === "assistant" ?
                             "bg-blue-300 text-black" : "bg-slate-100"}`}>
                             {message.role === 'user' ? 'User: ' : 'AI: '}
-                            {message.parts.map((part, index) =>
+                            {message.parts.map((part: any, index: number) =>
                                 part.type === 'text' ? <span key={index}>{part.text}</span> : null,
                             )}
                         </p>
                     </div>
                 ))}
+                {isLoading && (
+                    <div className="flex justify-start mr-18">
+                        <p className="inline-block p-2 rounded-lg bg-gray-200 text-black">
+                            AI: <span className="animate-pulse">正在输入...</span>
+                        </p>
+                    </div>
+                )}
             </div>
             <div className='h-4' ref={endRef}>
             </div>
@@ -142,15 +137,27 @@ export default function Page() {
                     className="w-full rounded-lg p-3 h-30 focus:outline-none"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSubmit();
+                        }
+                    }}
                 >
                 </textarea>
                 <div className="flex flex-row items-center justify-between w-full h-12 mb-2">
-                    <div>
-                        <div className={`flex flex-row items-center justify-center rounded-lg border-[1px] px-2 py-1 ml-2 cursor-pointer
-                            ${model === 'gpt-4.1-mini' ? "border-blue-300 bg-blue-200" : "border-gray-300"}`} onClick={handleChangeModel}>
-                            <p className="text-sm">gpt-4.1-mini</p>
-                        </div>
-                    </div>
+                    <select
+                        className="ml-2 px-2 py-1 text-sm rounded-lg border
+                            border-gray-300 focus:outline-none
+                            focus:border-blue-400 cursor-pointer"
+                        value={model}
+                        onChange={(e) => setModel(e.target.value)}
+                    >
+                        <option value="Gemma 3 4B">Gemma-4B</option>
+                        <option value="Gemma 3 27B">Gemma-27B</option>
+                        <option value="gpt-oss-20b">Chatgpt-20B</option>
+                        <option value="DeepSeek-V3.1">DeepSeek</option>
+                    </select>
                     <div className="flex items-center justify-center border-2 mr-4 border-black p-1 rounded-full"
                         onClick={handleSubmit}>
                         <EastIcon />

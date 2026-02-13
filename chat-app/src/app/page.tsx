@@ -9,7 +9,7 @@ import { useState } from "react";
 export default function Page() {
 
   const [input, setInput] = useState("");
-  const [model, setModel] = useState("gpt-4");
+  const [model, setModel] = useState("Gemma 3 4B");
 
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -50,12 +50,18 @@ export default function Page() {
           >
           </textarea>
           <div className="flex flex-row items-center justify-between w-full h-12 mb-2">
-            <div>
-              <div className={`flex flex-row items-center justify-center rounded-lg border-[1px] px-2 py-1 ml-2 
-              cursor-pointer ${model === 'gpt-4' ? "border-blue-300 bg-blue-200" : "border-gray-300"}`}>
-                <p className="text-sm">gpt-4</p>
-              </div>
-            </div>
+            <select
+              className="ml-2 px-2 py-1 text-sm rounded-lg border
+                border-gray-300 focus:outline-none
+                focus:border-blue-400 cursor-pointer"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              <option value="Gemma 3 4B">Gemma-4B</option>
+              <option value="Gemma 3 27B">Gemma-27B</option>
+              <option value="gpt-oss-20b">Chatgpt-20B</option>
+              <option value="DeepSeek-V3.1">DeepSeek</option>
+            </select>
             <div className="flex items-center justify-center border-2 mr-4 border-black p-1 rounded-full" onClick={handleSubmit}>
               <EastIcon />
             </div>
