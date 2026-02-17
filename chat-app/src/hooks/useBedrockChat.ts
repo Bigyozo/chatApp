@@ -7,12 +7,12 @@ export interface Message {
     parts: Array<{ type: string; text: string }>;
 }
 
-export function useBedrockChat(chatId: string, model?: string) {
+export function useBedrockChat(chatId: string) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
-    const sendMessage = useCallback(async (text: string) => {
+    const sendMessage = useCallback(async (text: string, model: string) => {
         const trimmedText = text.trim();
         if (!trimmedText) return;
 
@@ -127,7 +127,7 @@ export function useBedrockChat(chatId: string, model?: string) {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, chatId, model]);
+    }, [messages, chatId]);
 
     const clearMessages = useCallback(() => {
         setMessages([]);

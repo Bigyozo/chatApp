@@ -41,8 +41,7 @@ export default function Page() {
 
     // 使用自定义的 Bedrock Chat hook
     const { messages, sendMessage, isLoading, loadHistory } = useBedrockChat(
-        typeof chat_id === 'string' ? chat_id : '',
-        model
+        typeof chat_id === 'string' ? chat_id : ''
     );
 
     const [hasInitialized, setHasInitialized] = useState(false);
@@ -81,7 +80,7 @@ export default function Page() {
         }
         try {
             console.log('Sending message:', input);
-            await sendMessage(input);
+            await sendMessage(input, model);
             setInput('');
         } catch (error) {
             console.error('Error sending message:', error);
@@ -94,7 +93,7 @@ export default function Page() {
         const messageCount = previousMessages?.data?.length;
 
         if (chatTitle && messageCount === 0 && !hasInitialized && historyLoaded) {
-            sendMessage(chatTitle);
+            sendMessage(chatTitle, model);
             setHasInitialized(true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

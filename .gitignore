@@ -140,3 +140,4 @@ vite.config.ts.timestamp-*
 .vscode/launch.json
 chat-app/next-env.d.ts
 chat-app/package-lock.json
+CLAUDE.md
