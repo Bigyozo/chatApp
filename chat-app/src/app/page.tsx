@@ -20,7 +20,7 @@ export default function Page() {
     },
     onSuccess: (res) => {
       console.log("Mutation successful:", res);
-      router.push(`/chat/${res.data.id}`);
+      router.push(`/chat/${res.data.id}?new=true`);
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     }
   });

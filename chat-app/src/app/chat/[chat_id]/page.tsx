@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRef } from 'react';
 import { useState } from 'react';
 import EastIcon from "@mui/icons-material/East";
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useBedrockChat } from '@/hooks/useBedrockChat';
@@ -12,6 +12,9 @@ import { useBedrockChat } from '@/hooks/useBedrockChat';
 export default function Page() {
 
     const { chat_id } = useParams();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const isNewChat = searchParams.get('new') === 'true';
 
     const [model, setModel] = useState('Gemma 3 4B');
 
@@ -40,28 +43,39 @@ export default function Page() {
     });
 
     // 使用自定义的 Bedrock Chat hook
-    const { messages, sendMessage, isLoading, loadHistory } = useBedrockChat(
+    const { messages, sendMessage, isLoading, loadHistory, clearMessages } = useBedrockChat(
         typeof chat_id === 'string' ? chat_id : ''
     );
 
     const [hasInitialized, setHasInitialized] = useState(false);
     const [historyLoaded, setHistoryLoaded] = useState(false);
 
+    // chat_id 变化时重置状态
+    useEffect(() => {
+        setHasInitialized(false);
+        setHistoryLoaded(false);
+        clearMessages();
+    }, [chat_id, clearMessages]);
+
     // 初始化历史消息 - 只运行一次
     useEffect(() => {
-        if (previousMessages?.data && !historyLoaded) {
-            const formattedMessages = previousMessages.data
-                .filter((msg: any) => msg.content && msg.content.trim().length > 0)
-                .map((msg: any) => ({
-                    id: msg.id,
-                    role: msg.role as 'user' | 'assistant',
-                    content: msg.content,
-                    parts: [{ type: 'text', text: msg.content }],
-                }));
-            loadHistory(formattedMessages);
+        if (isNewChat) {
             setHistoryLoaded(true);
+        } else {
+            if (previousMessages?.data && !historyLoaded) {
+                const formattedMessages = previousMessages.data
+                    .filter((msg: any) => msg.content && msg.content.trim().length > 0)
+                    .map((msg: any) => ({
+                        id: msg.id,
+                        role: msg.role as 'user' | 'assistant',
+                        content: msg.content,
+                        parts: [{ type: 'text', text: msg.content }],
+                    }));
+                loadHistory(formattedMessages);
+                setHistoryLoaded(true);
+            }
         }
-    }, [previousMessages?.data, historyLoaded, loadHistory]);
+    }, [isNewChat, previousMessages?.data, historyLoaded, loadHistory]);
 
     const [input, setInput] = useState('');
     const endRef = useRef<HTMLDivElement>(null);
@@ -87,17 +101,16 @@ export default function Page() {
         }
     };
 
-    // 自动发送第一条消息 - 只运行一次
+    // 自动发送第一条消息 - 仅在新建聊天时（URL 含 ?new=true）
     useEffect(() => {
         const chatTitle = chat?.data?.[0]?.title;
-        const messageCount = previousMessages?.data?.length;
-
-        if (chatTitle && messageCount === 0 && !hasInitialized && historyLoaded) {
+        if (isNewChat && chatTitle && !hasInitialized) {
             sendMessage(chatTitle, model);
             setHasInitialized(true);
+            // 移除 URL 中的 ?new=true，防止刷新后重复发送
+            router.replace(`/chat/${chat_id}`, { scroll: false });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [chat?.data, previousMessages?.data, hasInitialized, historyLoaded]);
+    }, [chat?.data, isNewChat, hasInitialized]);
 
     return (
         <div className='flex flex-col h-screen justify-between items-center'>

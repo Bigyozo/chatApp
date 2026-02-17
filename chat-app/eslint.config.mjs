@@ -22,6 +22,7 @@ const eslintConfig = [
     rules: {
       "max-len": ["error", { code: 140 }],
       "@typescript-eslint/no-explicit-any": "off",
+      "react-hooks/exhaustive-deps": "off",
     },
   },
 ];

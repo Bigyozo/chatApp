@@ -64,7 +64,7 @@ docker build -t chat-app:latest .
 
 # 启动新容器
 echo -e "${YELLOW}🚀 启动容器...${NC}"
-docker-compose up -d
+docker-compose up -d --no-build
 
 # 等待服务启动
 echo -e "${YELLOW}⏳ 等待服务启动...${NC}"

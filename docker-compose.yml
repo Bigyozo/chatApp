@@ -1,5 +1,6 @@
 services:
   chat-app:
+    image: chat-app:latest
     build:
       context: .
       dockerfile: Dockerfile
