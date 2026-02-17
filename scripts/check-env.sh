@@ -51,15 +51,6 @@ else
     echo -e "${YELLOW}⚠${NC} AWS_SECRET_ACCESS_KEY: 未设置或使用默认值"
 fi
 
-# 检查 OpenAI API Key
-OPENAI_KEY=$(docker-compose exec -T chat-app sh -c 'echo $OPENAI_API_KEY')
-if [ -n "$OPENAI_KEY" ] && [ "$OPENAI_KEY" != "your_openai_api_key" ]; then
-    KEY_PREFIX=$(echo $OPENAI_KEY | cut -c1-8)
-    echo -e "${GREEN}✓${NC} OPENAI_API_KEY: ${KEY_PREFIX}... (已设置)"
-else
-    echo -e "${YELLOW}⚠${NC} OPENAI_API_KEY: 未设置或使用默认值"
-fi
-
 # 检查 Node Environment
 NODE_ENV=$(docker-compose exec -T chat-app sh -c 'echo $NODE_ENV')
 if [ -n "$NODE_ENV" ]; then
@@ -75,7 +66,7 @@ echo ""
 echo "🔗 测试 AWS 连接..."
 echo "访问健康检查端点..."
 
-if curl -f -s http://localhost:3000/api/health > /dev/null 2>&1; then
+if curl -f -s http://localhost/api/health > /dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} 应用运行正常"
 else
     echo -e "${RED}✗${NC} 应用健康检查失败"

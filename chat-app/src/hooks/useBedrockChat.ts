@@ -1,5 +1,16 @@
 import { useState, useCallback } from 'react';
 
+function generateId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+    });
+}
+
 export interface Message {
     id: string;
     role: 'user' | 'assistant';
@@ -21,7 +32,7 @@ export function useBedrockChat(chatId: string) {
 
         // 创建用户消息
         const userMessage: Message = {
-            id: crypto.randomUUID(),
+            id: generateId(),
             role: 'user',
             content: trimmedText,
             parts: [{ type: 'text', text: trimmedText }]
@@ -31,7 +42,7 @@ export function useBedrockChat(chatId: string) {
         setMessages(prev => [...prev, userMessage]);
 
         // 创建助手消息占位符
-        const assistantMessageId = crypto.randomUUID();
+        const assistantMessageId = generateId();
         const assistantMessage: Message = {
             id: assistantMessageId,
             role: 'assistant',

@@ -43,13 +43,6 @@ if [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ "$AWS_SECRET_ACCESS_KEY" == "your_aws_se
     echo -e "${YELLOW}⚠ 警告: AWS_SECRET_ACCESS_KEY 未正确设置${NC}"
 fi
 
-# 检查 API Keys
-if [ -z "$OPENAI_API_KEY" ] || [ "$OPENAI_API_KEY" == "your_openai_api_key" ]; then
-    echo -e "${RED}❌ 错误: OPENAI_API_KEY 未正确设置${NC}"
-    echo "请在 .env 文件中设置有效的 OpenAI API Key"
-    exit 1
-fi
-
 echo -e "${GREEN}✓ 环境变量验证完成${NC}"
 
 # 检查 Docker 是否安装
@@ -80,10 +73,10 @@ sleep 10
 # 检查健康状态
 echo -e "${YELLOW}🏥 检查服务健康状态...${NC}"
 for i in {1..10}; do
-    if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
+    if curl -f http://localhost/api/health > /dev/null 2>&1; then
         echo -e "${GREEN}✓ 服务运行正常!${NC}"
         echo -e "${GREEN}🎉 部署完成!${NC}"
-        echo -e "访问地址: http://localhost:3000"
+        echo -e "访问地址: http://localhost"
         docker-compose ps
         exit 0
     fi
