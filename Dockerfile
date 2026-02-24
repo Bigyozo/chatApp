@@ -19,6 +19,10 @@ RUN npm ci
 # Copy source files
 COPY chat-app/ ./
 
+# Build-time env var for Next.js public variables
+ARG NEXT_PUBLIC_REDIRECT_URL
+ENV NEXT_PUBLIC_REDIRECT_URL=$NEXT_PUBLIC_REDIRECT_URL
+
 # Build the Next.js application
 RUN npm run build
 
