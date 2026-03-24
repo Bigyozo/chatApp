@@ -1,5 +1,6 @@
 import {
     createChat, deleteChat, getAllChats,
+    getChatsByUserId,
     getChatsByUserIdAndChatId, updateChat
 } from '@/lib/dynamodb';
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
         const chatId = searchParams.get('chatId');
-        const userId = 'user123'; // 临时使用固定用户ID，后续应从认证系统获取
+        const userId = searchParams.get('userId');
         const all = searchParams.get('all');
 
         if(!userId) {
@@ -28,7 +29,11 @@ export async function GET(request: NextRequest) {
         if (chatId && userId) {
             const chats = await getChatsByUserIdAndChatId(userId, chatId);
             return NextResponse.json(chats, { status: 200 });
-        } else if (all === 'true') {
+        }else if (userId) {
+            const chats = await getChatsByUserId(userId);
+            return NextResponse.json(chats, { status: 200 });
+        } 
+        else if (all === 'true') {
             const chats = await getAllChats();
             return NextResponse.json(chats, { status: 200 });
         } else {

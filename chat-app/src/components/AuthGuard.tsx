@@ -30,7 +30,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   if (!auth.isAuthenticated) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center gap-6">
-        <h1 className="text-3xl font-bold">Chat App</h1>
+        <h1 className="text-3xl font-bold">チャットボット</h1>
         <p className="text-gray-500">ログインして会話を始めましょう</p>
         <button
           className="px-8 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-lg"

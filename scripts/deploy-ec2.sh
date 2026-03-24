@@ -43,6 +43,15 @@ if [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ "$AWS_SECRET_ACCESS_KEY" == "your_aws_se
     echo -e "${YELLOW}⚠ 警告: AWS_SECRET_ACCESS_KEY 未正确设置${NC}"
 fi
 
+# 检查 NEXT_PUBLIC_REDIRECT_URL（构建时必须存在）
+if [ -z "$NEXT_PUBLIC_REDIRECT_URL" ]; then
+    echo -e "${RED}❌ 错误: NEXT_PUBLIC_REDIRECT_URL 未设置${NC}"
+    echo "此变量在 Next.js 构建时嵌入客户端包，必须在构建前配置"
+    echo "请在 .env 中添加: NEXT_PUBLIC_REDIRECT_URL=https://your-domain.com"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ NEXT_PUBLIC_REDIRECT_URL=${NEXT_PUBLIC_REDIRECT_URL}${NC}"
 echo -e "${GREEN}✓ 环境变量验证完成${NC}"
 
 # 检查 Docker 是否安装
@@ -60,7 +69,9 @@ docker-compose down 2>/dev/null || true
 
 # 构建新镜像
 echo -e "${YELLOW}🔨 构建 Docker 镜像...${NC}"
-docker build -t chat-app:latest .
+docker build \
+    --build-arg NEXT_PUBLIC_REDIRECT_URL="$NEXT_PUBLIC_REDIRECT_URL" \
+    -t chat-app:latest .
 
 # 启动新容器
 echo -e "${YELLOW}🚀 启动容器...${NC}"

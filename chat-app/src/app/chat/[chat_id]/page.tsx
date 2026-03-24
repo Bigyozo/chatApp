@@ -8,12 +8,14 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useBedrockChat } from '@/hooks/useBedrockChat';
+import { useAuth } from 'react-oidc-context';
 
 export default function Page() {
 
     const { chat_id } = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const auth = useAuth();
     const isNewChat = searchParams.get('new') === 'true';
 
     const [model, setModel] = useState('Gemma 3 4B');
@@ -21,7 +23,7 @@ export default function Page() {
     const { data: chat } = useQuery({
         queryKey: ['chat', chat_id],
         queryFn: async () => {
-            return axios.get(`/api/chats?chatId=${chat_id}`);
+            return axios.get(`/api/chats?chatId=${chat_id}&userId=${auth.user?.profile.sub}`);
         }
     });
 

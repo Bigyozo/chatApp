@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "react-oidc-context";
 export default function Page() {
 
   const [input, setInput] = useState("");
@@ -12,10 +13,11 @@ export default function Page() {
 
   const queryClient = useQueryClient();
   const router = useRouter();
+  const auth = useAuth();
 
   const { mutate: createChat } = useMutation({
     mutationFn: async (input: string) => {
-      return axios.post("/api/chats", { userId: "user123", title: input, model });
+      return axios.post("/api/chats", { userId: auth.user?.profile.sub, title: input, model });
     },
     onSuccess: (res) => {
       console.log("Mutation successful:", res);
