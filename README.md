@@ -1,6 +1,7 @@
 # Chat App
 
 AWS Bedrock を活用した AI チャットアプリケーションです。Next.js 15 をベースに、複数の AI モデル（Gemma、DeepSeek、GPT-OSS）とのリアルタイムストリーミング会話をサポートします。認証は AWS Cognito、データ永続化は DynamoDB を使用しています。
+### [デモを試す](https://zhangfanglong.click)
 
 ## 主な機能
 
@@ -42,7 +43,7 @@ EC2 インスタンス上に Docker Compose で各サービスをデプロイし
 │   │   ┌───────────────────────────────────────────────────┐   │   │
 │   │   │          chat-app (Node.js 20 Alpine)             │   │   │
 │   │   │                                                   │   │   │
-│   │   │  Next.js 15 (:3000)                               │   │   │
+│   │   │  Next.js 15 (:3001)                               │   │   │
 │   │   │  - API Routes (Bedrock streaming)                 │   │   │
 │   │   │  - SSR / React 19                                 │   │   │
 │   │   └────────────────────┬──────────────────────────────┘   │   │
@@ -77,7 +78,7 @@ EC2 インスタンス上に Docker Compose で各サービスをデプロイし
 ### アーキテクチャの詳細
 
 **Nginx（リバースプロキシ）**
-- ポート 443 で SSL 終端を行い、内部の `chat-app:3000` へプロキシ
+- ポート 443 で SSL 終端を行い、内部の `chat-app:3001` へプロキシ
 - ポート 80 は HTTPS へのリダイレクトと Certbot の ACME チャレンジに使用
 - `proxy_buffering off` でストリーミングレスポンスに対応
 - リードタイムアウト 300 秒（長時間ストリーミング対応）
