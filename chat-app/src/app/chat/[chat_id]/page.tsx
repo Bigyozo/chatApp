@@ -4,11 +4,14 @@ import { useEffect } from 'react';
 import { useRef } from 'react';
 import { useState } from 'react';
 import EastIcon from "@mui/icons-material/East";
+import MicIcon from "@mui/icons-material/Mic";
+import MicOffIcon from "@mui/icons-material/MicOff";
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { useBedrockChat } from '@/hooks/useBedrockChat';
 import { useAuth } from 'react-oidc-context';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 
 export default function Page() {
 
@@ -82,6 +85,11 @@ export default function Page() {
     const [input, setInput] = useState('');
     const endRef = useRef<HTMLDivElement>(null);
 
+    const { isListening, isSupported, toggle: toggleSpeech } = useSpeechRecognition({
+        onResult: (transcript) => setInput((prev) => prev + transcript),
+        lang: 'ja-JP',
+    });
+
     useEffect(() => {
         if (endRef.current) {
             endRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -135,7 +143,7 @@ export default function Page() {
                 {isLoading && (
                     <div className="flex justify-start mr-18">
                         <p className="inline-block p-2 rounded-lg bg-gray-200 text-black">
-                            AI: <span className="animate-pulse">正在输入...</span>
+                            AI: <span className="animate-pulse">入力中...</span>
                         </p>
                     </div>
                 )}
@@ -172,9 +180,22 @@ export default function Page() {
                         <option value="gpt-oss-20b">Chatgpt-20B</option>
                         <option value="DeepSeek-V3.1">DeepSeek</option>
                     </select>
-                    <div className="flex items-center justify-center border-2 mr-4 border-black p-1 rounded-full"
-                        onClick={handleSubmit}>
-                        <EastIcon />
+                    <div className="flex items-center gap-2 mr-4">
+                        {isSupported && (
+                            <div
+                                className={`flex items-center justify-center border-2 p-1 rounded-full cursor-pointer transition-colors
+                                    ${isListening ? 'border-red-500 text-red-500 animate-pulse' :
+                                        'border-gray-400 text-gray-600 hover:border-blue-400 hover:text-blue-500'}`}
+                                onClick={toggleSpeech}
+                                title={isListening ? '音声停止' : '音声入力'}
+                            >
+                                {isListening ? <MicOffIcon /> : <MicIcon />}
+                            </div>
+                        )}
+                        <div className="flex items-center justify-center border-2 border-black p-1 rounded-full cursor-pointer"
+                            onClick={handleSubmit}>
+                            <EastIcon />
+                        </div>
                     </div>
                 </div>
             </div>
