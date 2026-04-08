@@ -13,6 +13,10 @@ const bedrockClient = new BedrockRuntimeClient({
     } : undefined,
 });
 
+// Local LLM (LM Studio) config
+const LOCAL_LLM_URL = process.env.LOCAL_LLM_URL || 'http://127.0.0.1:1234';
+const LOCAL_LLM_MODEL = process.env.LOCAL_LLM_MODEL || 'google/gemma-4-26b-a4b';
+
 // 前端显示名 → Bedrock 模型 ID 映射
 const MODEL_MAP: Record<string, string> = {
     'Gemma 3 4B': 'google.gemma-3-4b-it',
@@ -47,6 +51,97 @@ export async function POST(req: Request) {
     // 保存用户消息到数据库
     if (lastMessageText.trim()) {
         await createMessage(chat_id, 'user', lastMessageText.trim());
+    }
+
+    // Local LLM branch (LM Studio OpenAI-compatible API)
+    if (model === 'Local-LLM') {
+        const openAIMessages = messages
+            .map((msg: any) => ({
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: (msg.parts?.[0]?.text || msg.content || '').trim(),
+            }))
+            .filter((msg: any) => msg.content.length > 0);
+
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+            async start(controller) {
+                try {
+                    const res = await fetch(`${LOCAL_LLM_URL}/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: LOCAL_LLM_MODEL,
+                            messages: openAIMessages,
+                            stream: true,
+                            temperature: 0.7,
+                            max_tokens: 2048,
+                        }),
+                    });
+
+                    if (!res.ok || !res.body) {
+                        throw new Error(`Local LLM responded with status ${res.status}`);
+                    }
+
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullText = '';
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() ?? '';
+
+                        for (const line of lines) {
+                            const trimmed = line.trim();
+                            if (!trimmed.startsWith('data: ')) continue;
+                            const data = trimmed.slice(6);
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const parsed = JSON.parse(data);
+                                const text = parsed.choices?.[0]?.delta?.content;
+                                if (text) {
+                                    fullText += text;
+                                    controller.enqueue(
+                                        encoder.encode(`0:${JSON.stringify({ type: 'text-delta', textDelta: text })}\n`)
+                                    );
+                                }
+                            } catch {
+                                // skip malformed lines
+                            }
+                        }
+                    }
+
+                    if (fullText) {
+                        await createMessage(chat_id, 'assistant', fullText);
+                    }
+
+                    controller.enqueue(
+                        encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n`)
+                    );
+                    controller.close();
+                } catch (error) {
+                    console.error('Local LLM streaming error:', error);
+                    const msg = error instanceof Error ? error.message : 'Local LLM connection failed';
+                    controller.enqueue(
+                        encoder.encode(`0:${JSON.stringify({ type: 'text-delta', textDelta: `[エラー] LM Studio に接続できません: ${msg}` })}\n`)
+                    );
+                    controller.enqueue(encoder.encode(`d:{"finishReason":"error"}\n`));
+                    controller.close();
+                }
+            },
+        });
+
+        return new Response(stream, {
+            headers: {
+                'Content-Type': 'text/plain; charset=utf-8',
+                'X-Vercel-AI-Data-Stream': 'v1',
+            },
+        });
     }
 
     // 转换消息格式为 Bedrock Converse API 支持的格式

@@ -179,6 +179,7 @@ export default function Page() {
                         <option value="Gemma 3 27B">Gemma-27B</option>
                         <option value="gpt-oss-20b">Chatgpt-20B</option>
                         <option value="DeepSeek-V3.1">DeepSeek</option>
+                        <option value="Local-LLM">Local-LLM</option>
                     </select>
                     <div className="flex items-center gap-2 mr-4">
                         {isSupported && (
