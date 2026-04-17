@@ -5,14 +5,14 @@
 
 set -e
 
-ACCOUNT_ID="920975870093"
-REGION="ap-northeast-1"
-ECR_REPO="chat-app"
+ACCOUNT_ID="${AWS_ACCOUNT_ID:?ERROR: AWS_ACCOUNT_ID is not set. Export it before running this script.}"
+REGION="${AWS_REGION:-ap-northeast-1}"
+ECR_REPO="${ECR_REPO_NAME:-chat-app}"
 ECR_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$ECR_REPO"
-YOUR_DOMAIN="https://zhangfanglong.click"
-CLUSTER="chat-app-cluster"
-SERVICE="chat-app-service"
-TASK_DEF="chatTask"
+YOUR_DOMAIN="${NEXT_PUBLIC_REDIRECT_URL:?ERROR: NEXT_PUBLIC_REDIRECT_URL is not set.}"
+CLUSTER="${ECS_CLUSTER_NAME:-chat-app-cluster}"
+SERVICE="${ECS_SERVICE_NAME:-chat-app-service}"
+TASK_DEF="${ECS_TASK_DEFINITION:-chatTask}"
 
 # 颜色定义
 GREEN='\033[0;32m'
