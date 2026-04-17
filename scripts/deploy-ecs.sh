@@ -10,6 +10,9 @@ REGION="${AWS_REGION:-ap-northeast-1}"
 ECR_REPO="${ECR_REPO_NAME:-chat-app}"
 ECR_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$ECR_REPO"
 YOUR_DOMAIN="${NEXT_PUBLIC_REDIRECT_URL:?ERROR: NEXT_PUBLIC_REDIRECT_URL is not set.}"
+COGNITO_AUTHORITY="${NEXT_PUBLIC_COGNITO_AUTHORITY:?ERROR: NEXT_PUBLIC_COGNITO_AUTHORITY is not set.}"
+COGNITO_CLIENT_ID="${NEXT_PUBLIC_COGNITO_CLIENT_ID:?ERROR: NEXT_PUBLIC_COGNITO_CLIENT_ID is not set.}"
+APP_PORT="${PORT:-3001}"
 CLUSTER="${ECS_CLUSTER_NAME:-chat-app-cluster}"
 SERVICE="${ECS_SERVICE_NAME:-chat-app-service}"
 TASK_DEF="${ECS_TASK_DEFINITION:-chatTask}"
@@ -32,9 +35,12 @@ echo ""
 
 # Step 2: イメージをビルド
 echo -e "${YELLOW}Step 2/5: Docker イメージをビルド中...${NC}"
-echo "   ビルドコマンド: docker build --build-arg NEXT_PUBLIC_REDIRECT_URL=$YOUR_DOMAIN -t chat-app:latest ."
+echo "   ビルドコマンド: docker build --build-arg NEXT_PUBLIC_REDIRECT_URL=$YOUR_DOMAIN ..."
 docker build \
   --build-arg NEXT_PUBLIC_REDIRECT_URL="$YOUR_DOMAIN" \
+  --build-arg NEXT_PUBLIC_COGNITO_AUTHORITY="$COGNITO_AUTHORITY" \
+  --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \
+  --build-arg PORT="$APP_PORT" \
   -t chat-app:latest \
   .
 

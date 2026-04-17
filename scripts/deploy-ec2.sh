@@ -43,15 +43,31 @@ if [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ "$AWS_SECRET_ACCESS_KEY" == "your_aws_se
     echo -e "${YELLOW}⚠ 警告: AWS_SECRET_ACCESS_KEY が正しく設定されていません${NC}"
 fi
 
-# NEXT_PUBLIC_REDIRECT_URL の確認（ビルド時に必須）
+# NEXT_PUBLIC_* の確認（ビルド時にクライアントバンドルへ埋め込まれるため必須）
 if [ -z "$NEXT_PUBLIC_REDIRECT_URL" ]; then
     echo -e "${RED}❌ エラー: NEXT_PUBLIC_REDIRECT_URL が未設定です${NC}"
-    echo "この変数は Next.js のビルド時にクライアントバンドルに埋め込まれるため、ビルド前に設定が必要です"
     echo ".env に以下を追加してください: NEXT_PUBLIC_REDIRECT_URL=https://your-domain.com"
     exit 1
 fi
 
+if [ -z "$NEXT_PUBLIC_COGNITO_AUTHORITY" ]; then
+    echo -e "${RED}❌ エラー: NEXT_PUBLIC_COGNITO_AUTHORITY が未設定です${NC}"
+    echo ".env に以下を追加してください: NEXT_PUBLIC_COGNITO_AUTHORITY=https://cognito-idp.<region>.amazonaws.com/<userPoolId>"
+    exit 1
+fi
+
+if [ -z "$NEXT_PUBLIC_COGNITO_CLIENT_ID" ]; then
+    echo -e "${RED}❌ エラー: NEXT_PUBLIC_COGNITO_CLIENT_ID が未設定です${NC}"
+    echo ".env に以下を追加してください: NEXT_PUBLIC_COGNITO_CLIENT_ID=<your-client-id>"
+    exit 1
+fi
+
+PORT="${PORT:-3001}"
+
 echo -e "${GREEN}✓ NEXT_PUBLIC_REDIRECT_URL=${NEXT_PUBLIC_REDIRECT_URL}${NC}"
+echo -e "${GREEN}✓ NEXT_PUBLIC_COGNITO_AUTHORITY=${NEXT_PUBLIC_COGNITO_AUTHORITY}${NC}"
+echo -e "${GREEN}✓ NEXT_PUBLIC_COGNITO_CLIENT_ID=${NEXT_PUBLIC_COGNITO_CLIENT_ID}${NC}"
+echo -e "${GREEN}✓ PORT=${PORT}${NC}"
 echo -e "${GREEN}✓ 環境変数の検証完了${NC}"
 
 # Docker がインストールされているか確認
@@ -71,6 +87,9 @@ docker-compose down 2>/dev/null || true
 echo -e "${YELLOW}🔨 Docker イメージをビルド中...${NC}"
 docker build \
     --build-arg NEXT_PUBLIC_REDIRECT_URL="$NEXT_PUBLIC_REDIRECT_URL" \
+    --build-arg NEXT_PUBLIC_COGNITO_AUTHORITY="$NEXT_PUBLIC_COGNITO_AUTHORITY" \
+    --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID="$NEXT_PUBLIC_COGNITO_CLIENT_ID" \
+    --build-arg PORT="$PORT" \
     -t chat-app:latest .
 
 # 新しいコンテナを起動
