@@ -30,7 +30,7 @@ export default function Page() {
         }
     });
 
-    // 从数据库中获取 model 并初始化下拉列表
+    // データベースから model を取得してドロップダウンを初期化する
     useEffect(() => {
         const chatModel = chat?.data?.[0]?.model;
         if (chatModel) {
@@ -47,7 +47,7 @@ export default function Page() {
         enabled: !!chat?.data?.[0]?.id,
     });
 
-    // 使用自定义的 Bedrock Chat hook
+    // カスタムの Bedrock Chat フックを使用する
     const { messages, sendMessage, isLoading, loadHistory, clearMessages } = useBedrockChat(
         typeof chat_id === 'string' ? chat_id : ''
     );
@@ -55,14 +55,14 @@ export default function Page() {
     const [hasInitialized, setHasInitialized] = useState(false);
     const [historyLoaded, setHistoryLoaded] = useState(false);
 
-    // chat_id 变化时重置状态
+    // chat_id 変更時に状態をリセットする
     useEffect(() => {
         setHasInitialized(false);
         setHistoryLoaded(false);
         clearMessages();
     }, [chat_id, clearMessages]);
 
-    // 初始化历史消息 - 只运行一次
+    // 履歴メッセージを初期化する - 一度のみ実行
     useEffect(() => {
         if (isNewChat) {
             setHistoryLoaded(true);
@@ -96,6 +96,7 @@ export default function Page() {
         }
     }, [messages]);
 
+    /** 入力テキストを Bedrock へ送信し、送信後にテキストエリアをクリアする */
     const handleSubmit = async () => {
         console.log('handleSubmit clicked, input:', input);
         if (!input.trim()) {
@@ -111,13 +112,13 @@ export default function Page() {
         }
     };
 
-    // 自动发送第一条消息 - 仅在新建聊天时（URL 含 ?new=true）
+    // 最初のメッセージを自動送信する - 新規チャット時のみ（URL に ?new=true を含む場合）
     useEffect(() => {
         const chatTitle = chat?.data?.[0]?.title;
         if (isNewChat && chatTitle && !hasInitialized) {
             sendMessage(chatTitle, model);
             setHasInitialized(true);
-            // 移除 URL 中的 ?new=true，防止刷新后重复发送
+            // リロード時の二重送信防止のため URL から ?new=true を削除する
             router.replace(`/chat/${chat_id}`, { scroll: false });
         }
     }, [chat?.data, isNewChat, hasInitialized]);

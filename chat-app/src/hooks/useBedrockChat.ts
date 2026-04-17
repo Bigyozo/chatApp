@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 
+// crypto.randomUUID が使えない環境向けのフォールバック
 function generateId(): string {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
         return crypto.randomUUID();
@@ -18,6 +19,9 @@ export interface Message {
     parts: Array<{ type: string; text: string }>;
 }
 
+/**
+ * Bedrock へのメッセージ送信・ストリーミング受信・履歴管理を行うカスタムフック
+ */
 export function useBedrockChat(chatId: string) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +34,7 @@ export function useBedrockChat(chatId: string) {
         setIsLoading(true);
         setError(null);
 
-        // 创建用户消息
+        // ユーザーメッセージを作成する
         const userMessage: Message = {
             id: generateId(),
             role: 'user',
@@ -38,10 +42,10 @@ export function useBedrockChat(chatId: string) {
             parts: [{ type: 'text', text: trimmedText }]
         };
 
-        // 立即显示用户消息
+        // ユーザーメッセージを即時表示する
         setMessages(prev => [...prev, userMessage]);
 
-        // 创建助手消息占位符
+        // アシスタントメッセージのプレースホルダーを作成する
         const assistantMessageId = generateId();
         const assistantMessage: Message = {
             id: assistantMessageId,
@@ -53,7 +57,7 @@ export function useBedrockChat(chatId: string) {
         setMessages(prev => [...prev, assistantMessage]);
 
         try {
-            // 构建请求消息列表（包括历史消息）- 过滤空消息
+            // リクエストメッセージリストを構築する（履歴含む）- 空メッセージを除外
             const allMessages = [...messages, userMessage]
                 .filter(msg => msg.content && msg.content.trim().length > 0)
                 .map(msg => ({
@@ -61,7 +65,7 @@ export function useBedrockChat(chatId: string) {
                     parts: msg.parts
                 }));
 
-            // 发送请求到 API
+            // API にリクエストを送信する
             const response = await fetch("/api/model", {
                 method: 'POST',
                 headers: {
@@ -82,7 +86,7 @@ export function useBedrockChat(chatId: string) {
                 throw new Error('Response body is null');
             }
 
-            // 处理流式响应
+            // ストリーミングレスポンスを処理する
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let assistantText = '';
@@ -96,14 +100,14 @@ export function useBedrockChat(chatId: string) {
 
                 for (const line of lines) {
                     try {
-                        // 尝试解析 ai-sdk 格式
+                        // ai-sdk 形式のパースを試みる
                         if (line.startsWith('0:')) {
                             const data = JSON.parse(line.substring(2));
                             if (data.type === 'text-delta' && data.textDelta) {
                                 assistantText += data.textDelta;
                             }
                         } else {
-                            // 尝试解析纯 JSON 格式
+                            // 純粋な JSON 形式のパースを試みる
                             const data = JSON.parse(line);
                             if (data.text) {
                                 assistantText += data.text;
@@ -112,7 +116,7 @@ export function useBedrockChat(chatId: string) {
                             }
                         }
 
-                        // 更新助手消息
+                        // アシスタントメッセージを更新する
                         setMessages(prev => prev.map(msg =>
                             msg.id === assistantMessageId
                                 ? {
@@ -123,7 +127,7 @@ export function useBedrockChat(chatId: string) {
                                 : msg
                         ));
                     } catch (e) {
-                        // 忽略解析错误，可能是不完整的 JSON
+                        // 不完全な JSON の可能性があるためパースエラーを無視する
                         console.debug('Parse error:', e);
                     }
                 }
@@ -133,17 +137,19 @@ export function useBedrockChat(chatId: string) {
             console.error('Send message error:', err);
             setError(err instanceof Error ? err : new Error('Unknown error'));
 
-            // 移除失败的助手消息
+            // 失敗したアシスタントメッセージを削除する
             setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
         } finally {
             setIsLoading(false);
         }
     }, [messages, chatId]);
 
+    /** メッセージ一覧をリセットする */
     const clearMessages = useCallback(() => {
         setMessages([]);
     }, []);
 
+    /** DynamoDB から取得した履歴メッセージをセットする */
     const loadHistory = useCallback((historyMessages: Message[]) => {
         setMessages(historyMessages);
     }, []);

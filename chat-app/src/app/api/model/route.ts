@@ -4,7 +4,7 @@ import { BedrockRuntimeClient, ConverseStreamCommand } from '@aws-sdk/client-bed
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
-// 初始化 Bedrock 客户端
+// Bedrock クライアントを初期化する
 const bedrockClient = new BedrockRuntimeClient({
     region: process.env.AWS_REGION || 'ap-northeast-1',
     credentials: process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY ? {
@@ -13,7 +13,7 @@ const bedrockClient = new BedrockRuntimeClient({
     } : undefined,
 });
 
-// 前端显示名 → Bedrock 模型 ID 映射
+// フロントエンド表示名 → Bedrock モデル ID のマッピング
 const MODEL_MAP: Record<string, string> = {
     'Gemma 3 4B': 'google.gemma-3-4b-it',
     'Gemma 3 27B': 'google.gemma-3-27b-it',
@@ -23,16 +23,24 @@ const MODEL_MAP: Record<string, string> = {
 
 const DEFAULT_MODEL_ID = process.env.BEDROCK_MODEL_ID || 'google.gemma-3-4b-it';
 
+/**
+ * フロントエンドのモデル名を Bedrock モデル ID に解決する
+ * マッピングにない場合はデフォルトモデルを使用する
+ */
 function resolveModelId(model?: string): string {
     if (!model) return DEFAULT_MODEL_ID;
-    // 先尝试映射表
+    // まずマッピングテーブルで検索する
     const mapped = MODEL_MAP[model];
     if (mapped) return mapped;
-    // 如果前端直接传了 Bedrock 模型 ID，则直接使用
+    // フロントエンドが直接 Bedrock モデル ID を渡した場合はそのまま使用する
     if (model.startsWith('google.') || model.startsWith('openai.') || model.startsWith('deepseek.')) return model;
     return DEFAULT_MODEL_ID;
 }
 
+/**
+ * POST /api/model
+ * Bedrock Converse Stream API を使ってメッセージを送信し、ストリーミングレスポンスを返す
+ */
 export async function POST(req: Request) {
     const { messages, chat_id, model } = await req.json();
 
@@ -44,15 +52,15 @@ export async function POST(req: Request) {
 
     console.log('Last message text:', lastMessageText);
 
-    // 保存用户消息到数据库
+    // ユーザーメッセージをデータベースに保存する
     if (lastMessageText.trim()) {
         await createMessage(chat_id, 'user', lastMessageText.trim());
     }
 
-    // 转换消息格式为 Bedrock Converse API 支持的格式
+    // メッセージを Bedrock Converse API がサポートする形式に変換する
     const bedrockMessages = messages
         .map((msg: any) => {
-            // 获取消息文本
+            // メッセージテキストを取得する
             const text = msg.parts?.[0]?.text || msg.content || '';
 
             return {
@@ -60,9 +68,9 @@ export async function POST(req: Request) {
                 content: [{ text: text.trim() }]
             };
         })
-        .filter((msg: any) => msg.content[0].text.length > 0); // 过滤掉空消息
+        .filter((msg: any) => msg.content[0].text.length > 0); // 空メッセージを除外する
 
-    // 确保至少有一条消息
+    // 少なくとも1件のメッセージがあることを確認する
     if (bedrockMessages.length === 0) {
         console.error('No valid messages after filtering');
         return new Response(JSON.stringify({ error: 'No valid messages' }), {
@@ -75,7 +83,7 @@ export async function POST(req: Request) {
     console.log('Bedrock messages:', JSON.stringify(bedrockMessages, null, 2));
 
     try {
-        // 使用 Converse Stream API
+        // Converse Stream API を使用する
         const command = new ConverseStreamCommand({
             modelId: resolveModelId(model),
             messages: bedrockMessages,
@@ -89,7 +97,7 @@ export async function POST(req: Request) {
 
         const response = await bedrockClient.send(command);
 
-        // 创建流式响应
+        // ストリーミングレスポンスを生成する
         let fullText = '';
 
         const encoder = new TextEncoder();
@@ -98,30 +106,30 @@ export async function POST(req: Request) {
                 try {
                     if (response.stream) {
                         for await (const event of response.stream) {
-                            // 处理内容块增量
+                            // コンテンツブロックの差分を処理する
                             if (event.contentBlockDelta?.delta?.text) {
                                 const text = event.contentBlockDelta.delta.text;
                                 fullText += text;
 
-                                // 发送流式数据给客户端 - ai-sdk 格式
+                                // クライアントへストリームデータを送信する（ai-sdk 形式）
                                 controller.enqueue(
                                     encoder.encode(`0:${JSON.stringify({ type: 'text-delta', textDelta: text })}\n`)
                                 );
                             }
 
-                            // 处理消息停止事件
+                            // メッセージ停止イベントを処理する
                             if (event.messageStop) {
                                 console.log('Message stop reason:', event.messageStop.stopReason);
                             }
                         }
                     }
 
-                    // 保存完整的助手响应到数据库
+                    // アシスタントの完全なレスポンスをデータベースに保存する
                     if (fullText) {
                         await createMessage(chat_id, 'assistant', fullText);
                     }
 
-                    // 发送完成信号
+                    // 完了シグナルを送信する
                     controller.enqueue(
                         encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n`)
                     );
@@ -142,7 +150,7 @@ export async function POST(req: Request) {
         });
     } catch (error) {
         console.error('Bedrock API error:', error);
-        // 显示更详细的错误信息
+        // より詳細なエラー情報を表示する
         const errorMessage = error instanceof Error ? error.message : 'Failed to generate response';
         console.error('Error details:', errorMessage);
         return new Response(JSON.stringify({

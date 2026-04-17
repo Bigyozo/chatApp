@@ -1,101 +1,101 @@
 #!/bin/bash
 
-# Chat App EC2 部署脚本
+# Chat App EC2 デプロイスクリプト
 # 使用方法: ./scripts/deploy-ec2.sh
 
 set -e
 
-echo "🚀 开始部署 Chat App 到 EC2..."
+echo "🚀 Chat App を EC2 へデプロイ開始..."
 
-# 颜色定义
+# 色定義
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# 检查 .env 文件
+# .env ファイルの確認
 if [ ! -f .env ]; then
-    echo -e "${RED}❌ 错误: 未找到 .env 文件${NC}"
-    echo "请创建 .env 文件并配置必要的环境变量"
+    echo -e "${RED}❌ エラー: .env ファイルが見つかりません${NC}"
+    echo ".env ファイルを作成して必要な環境変数を設定してください"
     echo "参考: cp .env.example .env"
     exit 1
 fi
 
-echo -e "${GREEN}✓ 找到 .env 文件${NC}"
+echo -e "${GREEN}✓ .env ファイルを確認しました${NC}"
 
-# 验证关键环境变量
-echo -e "${YELLOW}🔍 验证环境变量...${NC}"
+# 環境変数の検証
+echo -e "${YELLOW}🔍 環境変数を検証中...${NC}"
 source .env
 
-# 检查 AWS Region
+# AWS Region の確認
 if [ -z "$AWS_REGION" ]; then
-    echo -e "${YELLOW}⚠ 警告: AWS_REGION 未设置，将使用默认值 us-east-1${NC}"
+    echo -e "${YELLOW}⚠ 警告: AWS_REGION が未設定です。デフォルト値 us-east-1 を使用します${NC}"
 fi
 
-# 检查 AWS 凭证（如果不使用 IAM 角色）
+# AWS 認証情報の確認（IAM ロールを使用しない場合）
 if [ -z "$AWS_ACCESS_KEY_ID" ] || [ "$AWS_ACCESS_KEY_ID" == "your_aws_access_key_id" ]; then
-    echo -e "${YELLOW}⚠ 警告: AWS_ACCESS_KEY_ID 未正确设置${NC}"
-    echo -e "${YELLOW}  如果在 EC2 上使用 IAM 角色，可以忽略此警告${NC}"
-    echo -e "${YELLOW}  否则请在 .env 中设置正确的 AWS 凭证${NC}"
+    echo -e "${YELLOW}⚠ 警告: AWS_ACCESS_KEY_ID が正しく設定されていません${NC}"
+    echo -e "${YELLOW}  EC2 上で IAM ロールを使用する場合はこの警告を無視してください${NC}"
+    echo -e "${YELLOW}  それ以外の場合は .env に正しい AWS 認証情報を設定してください${NC}"
 fi
 
 if [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ "$AWS_SECRET_ACCESS_KEY" == "your_aws_secret_access_key" ]; then
-    echo -e "${YELLOW}⚠ 警告: AWS_SECRET_ACCESS_KEY 未正确设置${NC}"
+    echo -e "${YELLOW}⚠ 警告: AWS_SECRET_ACCESS_KEY が正しく設定されていません${NC}"
 fi
 
-# 检查 NEXT_PUBLIC_REDIRECT_URL（构建时必须存在）
+# NEXT_PUBLIC_REDIRECT_URL の確認（ビルド時に必須）
 if [ -z "$NEXT_PUBLIC_REDIRECT_URL" ]; then
-    echo -e "${RED}❌ 错误: NEXT_PUBLIC_REDIRECT_URL 未设置${NC}"
-    echo "此变量在 Next.js 构建时嵌入客户端包，必须在构建前配置"
-    echo "请在 .env 中添加: NEXT_PUBLIC_REDIRECT_URL=https://your-domain.com"
+    echo -e "${RED}❌ エラー: NEXT_PUBLIC_REDIRECT_URL が未設定です${NC}"
+    echo "この変数は Next.js のビルド時にクライアントバンドルに埋め込まれるため、ビルド前に設定が必要です"
+    echo ".env に以下を追加してください: NEXT_PUBLIC_REDIRECT_URL=https://your-domain.com"
     exit 1
 fi
 
 echo -e "${GREEN}✓ NEXT_PUBLIC_REDIRECT_URL=${NEXT_PUBLIC_REDIRECT_URL}${NC}"
-echo -e "${GREEN}✓ 环境变量验证完成${NC}"
+echo -e "${GREEN}✓ 環境変数の検証完了${NC}"
 
-# 检查 Docker 是否安装
+# Docker がインストールされているか確認
 if ! command -v docker &> /dev/null; then
-    echo -e "${RED}❌ 错误: Docker 未安装${NC}"
-    echo "请先安装 Docker"
+    echo -e "${RED}❌ エラー: Docker がインストールされていません${NC}"
+    echo "先に Docker をインストールしてください"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Docker 已安装${NC}"
+echo -e "${GREEN}✓ Docker がインストールされています${NC}"
 
-# 停止并删除旧容器
-echo -e "${YELLOW}🛑 停止旧容器...${NC}"
+# 既存コンテナを停止・削除
+echo -e "${YELLOW}🛑 旧コンテナを停止中...${NC}"
 docker-compose down 2>/dev/null || true
 
-# 构建新镜像
-echo -e "${YELLOW}🔨 构建 Docker 镜像...${NC}"
+# 新しいイメージをビルド
+echo -e "${YELLOW}🔨 Docker イメージをビルド中...${NC}"
 docker build \
     --build-arg NEXT_PUBLIC_REDIRECT_URL="$NEXT_PUBLIC_REDIRECT_URL" \
     -t chat-app:latest .
 
-# 启动新容器
-echo -e "${YELLOW}🚀 启动容器...${NC}"
+# 新しいコンテナを起動
+echo -e "${YELLOW}🚀 コンテナを起動中...${NC}"
 docker-compose up -d --no-build
 
-# 等待服务启动
-echo -e "${YELLOW}⏳ 等待服务启动...${NC}"
+# サービスの起動を待機
+echo -e "${YELLOW}⏳ サービスの起動を待機中...${NC}"
 sleep 10
 
-# 检查健康状态
-echo -e "${YELLOW}🏥 检查服务健康状态...${NC}"
+# ヘルスチェック
+echo -e "${YELLOW}🏥 サービスのヘルス状態を確認中...${NC}"
 for i in {1..10}; do
     if curl -f http://localhost/api/health > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ 服务运行正常!${NC}"
-        echo -e "${GREEN}🎉 部署完成!${NC}"
-        echo -e "访问地址: http://localhost"
+        echo -e "${GREEN}✓ サービスが正常に起動しました！${NC}"
+        echo -e "${GREEN}🎉 デプロイ完了！${NC}"
+        echo -e "アクセス URL: http://localhost"
         docker-compose ps
         exit 0
     fi
-    echo "尝试 $i/10..."
+    echo "確認中 $i/10..."
     sleep 3
 done
 
-echo -e "${RED}❌ 服务健康检查失败${NC}"
-echo "查看日志:"
+echo -e "${RED}❌ サービスのヘルスチェックに失敗しました${NC}"
+echo "ログを確認してください:"
 docker-compose logs --tail=50
 exit 1

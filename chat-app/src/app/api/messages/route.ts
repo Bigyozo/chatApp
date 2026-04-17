@@ -8,8 +8,8 @@ import {
 
 /**
  * GET /api/messages
- * 查询参数:
- *   - chatId: 获取该聊天的所有消息
+ * クエリパラメータ:
+ *   - chatId: 該当チャットの全メッセージを取得
  */
 export async function GET(request: NextRequest) {
     try {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/messages
- * 创建新消息
+ * 新しいメッセージを作成する
  */
 export async function POST(request: NextRequest) {
     try {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * PUT /api/messages
- * 更新消息
+ * メッセージを更新する
  * Body: { messageId: string, updates: Partial<MessageModel> }
  */
 export async function PUT(request: NextRequest) {
@@ -79,7 +79,7 @@ export async function PUT(request: NextRequest) {
 
 /**
  * DELETE /api/messages
- * 删除消息
+ * メッセージを削除する
  * Query: ?messageId=xxx
  */
 export async function DELETE(request: NextRequest) {

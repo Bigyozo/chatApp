@@ -1,78 +1,78 @@
 #!/bin/bash
 
-# EC2 实例初始化脚本
-# 在 EC2 实例上运行此脚本以安装必要的依赖
+# EC2 インスタンス初期化スクリプト
+# EC2 インスタンス上で実行し、必要な依存関係をインストールする
 
 set -e
 
-echo "🔧 开始配置 EC2 实例..."
+echo "🔧 EC2 インスタンスの設定を開始します..."
 
-# 更新系统
-echo "📦 更新系统包..."
+# システムを更新
+echo "📦 システムパッケージを更新中..."
 sudo yum update -y
 
-# 安装 Docker
-echo "🐳 安装 Docker..."
+# Docker のインストール
+echo "🐳 Docker をインストール中..."
 if ! command -v docker &> /dev/null; then
     sudo yum install -y docker
     sudo service docker start
     sudo systemctl enable docker
     sudo usermod -a -G docker ec2-user
-    echo "✓ Docker 安装完成"
+    echo "✓ Docker のインストール完了"
 else
-    echo "✓ Docker 已安装"
+    echo "✓ Docker はすでにインストール済みです"
 fi
 
-# 安装 Docker Compose
-echo "🔧 安装 Docker Compose..."
+# Docker Compose のインストール
+echo "🔧 Docker Compose をインストール中..."
 if ! command -v docker-compose &> /dev/null; then
     sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
-    echo "✓ Docker Compose 安装完成"
+    echo "✓ Docker Compose のインストール完了"
 else
-    echo "✓ Docker Compose 已安装"
+    echo "✓ Docker Compose はすでにインストール済みです"
 fi
 
-# 安装 Git
-echo "📚 安装 Git..."
+# Git のインストール
+echo "📚 Git をインストール中..."
 if ! command -v git &> /dev/null; then
     sudo yum install -y git
-    echo "✓ Git 安装完成"
+    echo "✓ Git のインストール完了"
 else
-    echo "✓ Git 已安装"
+    echo "✓ Git はすでにインストール済みです"
 fi
 
-# 安装 Certbot (Let's Encrypt 证书工具)
-echo "🔒 安装 Certbot..."
+# Certbot（Let's Encrypt 証明書ツール）のインストール
+echo "🔒 Certbot をインストール中..."
 if ! command -v certbot &> /dev/null; then
     sudo yum install -y certbot
-    echo "✓ Certbot 安装完成"
+    echo "✓ Certbot のインストール完了"
 else
-    echo "✓ Certbot 已安装"
+    echo "✓ Certbot はすでにインストール済みです"
 fi
 
-# 创建 ACME challenge 目录 (供证书续期使用)
+# ACME チャレンジ用ディレクトリを作成（証明書更新時に使用）
 sudo mkdir -p /var/www/certbot
 
-# 创建应用目录
-echo "📁 创建应用目录..."
+# アプリケーションディレクトリを作成
+echo "📁 アプリケーションディレクトリを作成中..."
 mkdir -p ~/chatApp
 cd ~/chatApp
 
 echo ""
-echo "✅ EC2 实例配置完成!"
+echo "✅ EC2 インスタンスの設定完了！"
 echo ""
-echo "📝 下一步:"
-echo "1. 克隆你的代码仓库: git clone <your-repo-url>"
-echo "2. 进入项目目录: cd chatApp"
-echo "3. 创建 .env 文件并配置环境变量"
-echo "4. 确保 EC2 安全组已开放端口 80 和 443"
-echo "5. 首次获取 SSL 证书 (需要端口 80 空闲):"
-echo "   sudo certbot certonly --standalone -d zhangfanglong.click"
-echo "6. 运行部署脚本: ./scripts/deploy-ec2.sh"
+echo "📝 次のステップ:"
+echo "1. リポジトリをクローンする: git clone <your-repo-url>"
+echo "2. プロジェクトディレクトリへ移動: cd chatApp"
+echo "3. .env ファイルを作成して環境変数を設定する"
+echo "4. EC2 セキュリティグループでポート 80 と 443 を開放する"
+echo "5. SSL 証明書を初回取得する（ポート 80 が空いている必要があります）:"
+echo "   sudo certbot certonly --standalone -d your-domain.com"
+echo "6. デプロイスクリプトを実行する: ./scripts/deploy-ec2.sh"
 echo ""
-echo "🔄 证书自动续期 (运行 sudo crontab -e 添加以下行):"
+echo "🔄 証明書の自動更新設定 (sudo crontab -e で以下を追加):"
 echo "   0 0 * * 1 certbot renew --webroot -w /var/www/certbot --quiet && docker compose -f ~/chatApp/docker-compose.yml exec nginx nginx -s reload"
 echo ""
-echo "⚠️  注意: 你可能需要重新登录以使 Docker 组权限生效"
-echo "   运行: exit 然后重新 SSH 登录"
+echo "⚠️  注意: Docker グループの権限を反映するため、一度ログアウトして再度 SSH 接続してください"
+echo "   実行: exit → 再度 SSH ログイン"

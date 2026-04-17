@@ -7,10 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/chats
- * 查询参数:
- *   - chatId: 获取单个聊天记录
- *   - userId: 获取该用户的所有聊天记录
- *   - all: true 获取所有聊天记录
+ * クエリパラメータ:
+ *   - chatId: 単一のチャットレコードを取得
+ *   - userId: 該当ユーザーの全チャットレコードを取得
+ *   - all: true 全チャットレコードを取得
  */
 export async function GET(request: NextRequest) {
     try {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         }else if (userId) {
             const chats = await getChatsByUserId(userId);
             return NextResponse.json(chats, { status: 200 });
-        } 
+        }
         else if (all === 'true') {
             const chats = await getAllChats();
             return NextResponse.json(chats, { status: 200 });
@@ -53,8 +53,9 @@ export async function GET(request: NextRequest) {
 
 
 /**
- * POST 方法：创建新的聊天记录
- * 请求体：{ userId: string, title: string, model: string }
+ * POST /api/chats
+ * 新しいチャットレコードを作成する
+ * リクエストボディ: { userId: string, title: string, model: string }
  */
 export async function POST(req: Request) {
     try {
@@ -80,8 +81,9 @@ export async function POST(req: Request) {
 }
 
 /**
- * PUT 方法：更新聊天记录
- * 请求体：{ chatId: string, updates: Partial<ChatModel> }
+ * PUT /api/chats
+ * チャットレコードを更新する
+ * リクエストボディ: { chatId: string, updates: Partial<ChatModel> }
  */
 export async function PUT(req: Request) {
     try {
@@ -107,8 +109,9 @@ export async function PUT(req: Request) {
 }
 
 /**
- * DELETE 方法：删除聊天记录
- * 请求体：{ chatId: string }
+ * DELETE /api/chats
+ * チャットレコードを削除する
+ * リクエストボディ: { chatId: string }
  */
 export async function DELETE(req: Request) {
     try {
@@ -135,4 +138,3 @@ export async function DELETE(req: Request) {
         );
     }
 }
-

@@ -10,14 +10,14 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { ChatModel, MessageModel } from '../common/type';
 
-// 初始化 DynamoDB 客户端
-// 如果提供了 AWS 凭证环境变量，则使用它们
-// 否则使用默认凭证链（IAM 角色、环境变量等）
+// DynamoDB クライアントを初期化する
+// AWS 認証情報の環境変数が提供されていれば使用する
+// それ以外はデフォルトの認証チェーン（IAM ロール、環境変数など）を使用する
 const clientConfig: any = {
     region: process.env.AWS_REGION || 'ap-northeast-1',
 };
 
-// 只有当明确设置了 AWS 凭证时才添加 credentials
+// AWS 認証情報が明示的に設定されている場合のみ credentials を追加する
 if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
     clientConfig.credentials = {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -33,7 +33,7 @@ const CHAT_TABLE_NAME = 'chatapp_chat';
 const MESSAGE_TABLE_NAME = 'chatapp_message';
 
 /**
- * 通过ID获取单个聊天记录
+ * ID で単一のチャットレコードを取得する
  */
 export async function getChatById(chatId: string): Promise<ChatModel | null> {
     try {
@@ -51,13 +51,13 @@ export async function getChatById(chatId: string): Promise<ChatModel | null> {
 }
 
 /**
- * 通过用户ID获取所有聊天记录
+ * ユーザー ID で全チャットレコードを取得する
  */
 export async function getChatsByUserId(userId: string): Promise<ChatModel[]> {
     try {
         const command = new QueryCommand({
             TableName: CHAT_TABLE_NAME,
-            IndexName: 'userIdIndex', // 确保DynamoDB中存在这个GSI
+            IndexName: 'userIdIndex', // DynamoDB にこの GSI が存在することを確認する
             KeyConditionExpression: 'userId = :userId',
             ExpressionAttributeValues: {
                 ':userId': userId,
@@ -72,12 +72,12 @@ export async function getChatsByUserId(userId: string): Promise<ChatModel[]> {
 }
 
 /**
- * 通过用户ID与Chat ID获取所有聊天记录
+ * ユーザー ID とチャット ID で全チャットレコードを取得する
  */
 export async function getChatsByUserIdAndChatId(userId: string, chatId: string): Promise<ChatModel[]> {
     try {
         console.log('Getting chats by User ID and Chat ID:', userId, chatId);
-        // 先通过 userId 查询，然后客户端过滤
+        // まず userId でクエリし、クライアント側でフィルタリングする
         const command = new QueryCommand({
             TableName: CHAT_TABLE_NAME,
             IndexName: 'userIdIndex',
@@ -89,7 +89,7 @@ export async function getChatsByUserIdAndChatId(userId: string, chatId: string):
         const response = await docClient.send(command);
         const items = (response.Items as ChatModel[]) || [];
 
-        // 客户端过滤 chatId
+        // chatId でクライアントフィルタリングする
         return items.filter(item => item.id === chatId);
     } catch (error) {
         console.error('Error:', error);
@@ -98,7 +98,7 @@ export async function getChatsByUserIdAndChatId(userId: string, chatId: string):
 }
 
 /**
- * 获取所有聊天记录
+ * 全チャットレコードを取得する
  */
 export async function getAllChats(): Promise<ChatModel[]> {
     try {
@@ -114,7 +114,7 @@ export async function getAllChats(): Promise<ChatModel[]> {
 }
 
 /**
- * 创建新的聊天记录
+ * 新しいチャットレコードを作成する
  */
 export async function createChat(userId: string, title: string, model: string): Promise<ChatModel> {
     try {
@@ -138,7 +138,7 @@ export async function createChat(userId: string, title: string, model: string): 
 }
 
 /**
- * 更新聊天记录
+ * チャットレコードを更新する
  */
 export async function updateChat(chatId: string, updates: Partial<ChatModel>): Promise<ChatModel> {
     try {
@@ -163,7 +163,7 @@ export async function updateChat(chatId: string, updates: Partial<ChatModel>): P
 }
 
 /**
- * 删除聊天记录
+ * チャットレコードを削除する
  */
 export async function deleteChat(chatId: string): Promise<void> {
     try {
@@ -181,7 +181,7 @@ export async function deleteChat(chatId: string): Promise<void> {
 // ==================== Message Operations ====================
 
 /**
- * 通过ID获取单个消息
+ * ID で単一のメッセージを取得する
  */
 export async function getMessageById(messageId: string): Promise<MessageModel | null> {
     try {
@@ -198,13 +198,13 @@ export async function getMessageById(messageId: string): Promise<MessageModel | 
 }
 
 /**
- * 通过聊天ID获取所有消息
+ * チャット ID で全メッセージを取得する
  */
 export async function getMessagesByChatId(chatId: string): Promise<MessageModel[]> {
     try {
         const command = new QueryCommand({
             TableName: MESSAGE_TABLE_NAME,
-            IndexName: 'chatIdIndex', // 确保DynamoDB中存在这个GSI
+            IndexName: 'chatIdIndex', // DynamoDB にこの GSI が存在することを確認する
             KeyConditionExpression: 'chatId = :chatId',
             ExpressionAttributeValues: {
                 ':chatId': chatId,
@@ -219,7 +219,7 @@ export async function getMessagesByChatId(chatId: string): Promise<MessageModel[
 }
 
 /**
- * 获取所有消息
+ * 全メッセージを取得する
  */
 export async function getAllMessages(): Promise<MessageModel[]> {
     try {
@@ -235,7 +235,7 @@ export async function getAllMessages(): Promise<MessageModel[]> {
 }
 
 /**
- * 创建新的消息
+ * 新しいメッセージを作成する
  */
 export async function createMessage(chatId: string, role: 'user' | 'assistant', content: string): Promise<MessageModel> {
     try {
@@ -259,7 +259,7 @@ export async function createMessage(chatId: string, role: 'user' | 'assistant', 
 }
 
 /**
- * 更新消息
+ * メッセージを更新する
  */
 export async function updateMessage(messageId: string, updates: Partial<MessageModel>): Promise<MessageModel> {
     try {
@@ -284,7 +284,7 @@ export async function updateMessage(messageId: string, updates: Partial<MessageM
 }
 
 /**
- * 删除消息
+ * メッセージを削除する
  */
 export async function deleteMessage(messageId: string): Promise<void> {
     try {

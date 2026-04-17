@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ECR 部署脚本
+# ECR デプロイスクリプト
 # 使用方法: ./scripts/deploy-ecr.sh
 
 set -e
@@ -14,93 +14,94 @@ CLUSTER="${ECS_CLUSTER_NAME:-chat-app-cluster}"
 SERVICE="${ECS_SERVICE_NAME:-chat-app-service}"
 TASK_DEF="${ECS_TASK_DEFINITION:-chatTask}"
 
-# 颜色定义
+# 色定義
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${YELLOW}🚀 ECR 部署流程开始${NC}"
+echo -e "${YELLOW}🚀 ECR デプロイ開始${NC}"
 echo ""
 
-# Step 1: 登录 ECR
-echo -e "${YELLOW}Step 1/5: 登录 ECR...${NC}"
+# Step 1: ECR にログイン
+echo -e "${YELLOW}Step 1/5: ECR にログイン中...${NC}"
 PASSWORD=$(aws ecr get-login-password --region $REGION)
 echo "$PASSWORD" | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
-echo -e "${GREEN}✅ 登录成功${NC}"
+echo -e "${GREEN}✅ ログイン成功${NC}"
 echo ""
 
-# Step 2: 构建镜像
-echo -e "${YELLOW}Step 2/5: 构建 Docker 镜像...${NC}"
-echo "   构建命令: docker build --build-arg NEXT_PUBLIC_REDIRECT_URL=$YOUR_DOMAIN -t chat-app:latest ."
+# Step 2: イメージをビルド
+echo -e "${YELLOW}Step 2/5: Docker イメージをビルド中...${NC}"
+echo "   ビルドコマンド: docker build --build-arg NEXT_PUBLIC_REDIRECT_URL=$YOUR_DOMAIN -t chat-app:latest ."
 docker build \
   --build-arg NEXT_PUBLIC_REDIRECT_URL="$YOUR_DOMAIN" \
   -t chat-app:latest \
   .
 
-echo -e "${GREEN}✅ 镜像构建完成${NC}"
+echo -e "${GREEN}✅ イメージビルド完了${NC}"
 echo ""
 
-# Step 3: 标记镜像
-echo -e "${YELLOW}Step 3/5: 标记镜像...${NC}"
+# Step 3: イメージにタグを付ける
+echo -e "${YELLOW}Step 3/5: イメージにタグを付けています...${NC}"
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 docker tag chat-app:latest $ECR_URI:latest
-docker tag chat-app:latest $ECR_URI:$(date +%Y%m%d-%H%M%S)
-echo -e "${GREEN}✅ 标记完成${NC}"
+docker tag chat-app:latest $ECR_URI:$TIMESTAMP
+echo -e "${GREEN}✅ タグ付け完了${NC}"
 echo ""
 
-# Step 4: Push 到 ECR
-echo -e "${YELLOW}Step 4/5: Push 镜像到 ECR...${NC}"
+# Step 4: ECR にプッシュ
+echo -e "${YELLOW}Step 4/5: イメージを ECR にプッシュ中...${NC}"
 docker push $ECR_URI:latest
-docker push $ECR_URI:$(date +%Y%m%d-%H%M%S)
-echo -e "${GREEN}✅ Push 完成${NC}"
+docker push $ECR_URI:$TIMESTAMP
+echo -e "${GREEN}✅ プッシュ完了${NC}"
 echo ""
 
-# Step 5: 更新 Task Definition
-echo -e "${YELLOW}Step 5/5: 更新 Task Definition...${NC}"
+# Step 5: Task Definition を更新
+echo -e "${YELLOW}Step 5/6: Task Definition を更新中...${NC}"
 
-# 获取当前 Task Definition
+# 現在の Task Definition を取得
 CURRENT_TASK_DEF=$(aws ecs describe-task-definition \
   --task-definition $TASK_DEF \
   --region $REGION \
   --query 'taskDefinition' --output json)
 
-# 修改镜像 URI
+# イメージ URI を変更
 NEW_TASK_DEF=$(echo $CURRENT_TASK_DEF | \
   jq --arg IMAGE "$ECR_URI:latest" '.containerDefinitions[0].image = $IMAGE' | \
   jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
 
-# 注册新的 Task Definition
+# 新しい Task Definition を登録
 aws ecs register-task-definition \
   --cli-input-json "$(echo $NEW_TASK_DEF)" \
   --region $REGION > /dev/null
 
-echo -e "${GREEN}✅ Task Definition 已更新${NC}"
+echo -e "${GREEN}✅ Task Definition 更新完了${NC}"
 echo ""
 
-# Step 6: 强制重新部署
-echo -e "${YELLOW}Step 6/5: 强制重新部署 Service...${NC}"
+# Step 6: 強制再デプロイ
+echo -e "${YELLOW}Step 6/6: Service を強制再デプロイ中...${NC}"
 aws ecs update-service \
   --cluster $CLUSTER \
   --service $SERVICE \
   --force-new-deployment \
   --region $REGION > /dev/null
 
-echo -e "${GREEN}✅ Service 部署命令已发送${NC}"
+echo -e "${GREEN}✅ Service デプロイコマンド送信完了${NC}"
 echo ""
 
-echo -e "${GREEN}🎉 部署流程完成！${NC}"
+echo -e "${GREEN}🎉 デプロイ完了！${NC}"
 echo ""
-echo "📊 部署详情："
+echo "📊 デプロイ詳細:"
 echo "   ECR Repository: $ECR_URI"
 echo "   Cluster: $CLUSTER"
 echo "   Service: $SERVICE"
 echo ""
-echo "⏳ 等待 1-2 分钟让新的 Task 启动..."
+echo "⏳ 新しいタスクが起動するまで 1〜2 分ほどお待ちください..."
 sleep 5
 echo ""
 
-# 检查部署状态
-echo -e "${YELLOW}检查 Service 部署状态...${NC}"
+# デプロイ状態を確認
+echo -e "${YELLOW}Service のデプロイ状態を確認中...${NC}"
 aws ecs describe-services \
   --cluster $CLUSTER \
   --services $SERVICE \
@@ -109,5 +110,5 @@ aws ecs describe-services \
   --output table
 
 echo ""
-echo -e "${GREEN}✅ 所有步骤完成！${NC}"
-echo "   应用地址: https://zhangfanglong.click"
+echo -e "${GREEN}✅ すべてのステップが完了しました！${NC}"
+echo "   アプリケーション URL: $YOUR_DOMAIN"
