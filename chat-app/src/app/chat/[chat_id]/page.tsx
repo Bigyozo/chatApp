@@ -20,13 +20,16 @@ export default function Page() {
     const router = useRouter();
     const auth = useAuth();
     const isNewChat = searchParams.get('new') === 'true';
+    const accessToken = auth.user?.access_token ?? '';
 
     const [model, setModel] = useState('Gemma 3 4B');
+
+    const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     const { data: chat } = useQuery({
         queryKey: ['chat', chat_id],
         queryFn: async () => {
-            return axios.get(`/api/chats?chatId=${chat_id}&userId=${auth.user?.profile.sub}`);
+            return axios.get(`/api/chats?chatId=${chat_id}`, { headers: authHeader });
         }
     });
 
@@ -41,15 +44,15 @@ export default function Page() {
     const { data: previousMessages } = useQuery({
         queryKey: ['messages', chat_id],
         queryFn: async () => {
-            const result = await axios.get(`/api/messages?chatId=${chat_id}`);
-            return result;
+            return axios.get(`/api/messages?chatId=${chat_id}`, { headers: authHeader });
         },
         enabled: !!chat?.data?.[0]?.id,
     });
 
     // カスタムの Bedrock Chat フックを使用する
     const { messages, sendMessage, isLoading, loadHistory, clearMessages } = useBedrockChat(
-        typeof chat_id === 'string' ? chat_id : ''
+        typeof chat_id === 'string' ? chat_id : '',
+        accessToken
     );
 
     const [hasInitialized, setHasInitialized] = useState(false);
@@ -98,13 +101,8 @@ export default function Page() {
 
     /** 入力テキストを Bedrock へ送信し、送信後にテキストエリアをクリアする */
     const handleSubmit = async () => {
-        console.log('handleSubmit clicked, input:', input);
-        if (!input.trim()) {
-            console.log('Input is empty');
-            return;
-        }
+        if (!input.trim()) return;
         try {
-            console.log('Sending message:', input);
             await sendMessage(input, model);
             setInput('');
         } catch (error) {
@@ -127,7 +125,7 @@ export default function Page() {
         <div className='flex flex-col h-screen justify-between items-center'>
             <div className='flex flex-col w-2/3 gap-8 overflow-y-auto justify-between flex-1'>
                 <div className='h-4'></div>
-                <div className='h-flex flex-col w-2/3 gap-8 flex-1'></div>
+                <div className='flex flex-col w-2/3 gap-8 flex-1'></div>
                 {messages.map(message => (
                     <div key={message.id}
                         className={`rounded-lg flex flex-row ${message.role === "assistant" ? "justify-start mr-18" : "justify-end ml-10"}`}

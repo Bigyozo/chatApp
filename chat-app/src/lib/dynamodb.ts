@@ -32,23 +32,6 @@ const docClient = DynamoDBDocumentClient.from(client);
 const CHAT_TABLE_NAME = 'chatapp_chat';
 const MESSAGE_TABLE_NAME = 'chatapp_message';
 
-/**
- * ID で単一のチャットレコードを取得する
- */
-export async function getChatById(chatId: string): Promise<ChatModel | null> {
-    try {
-        console.log('Getting chat by ID:', chatId);
-        const command = new GetCommand({
-            TableName: CHAT_TABLE_NAME,
-            Key: { id: chatId },
-        });
-        const response = await docClient.send(command);
-        return response.Item as ChatModel | undefined || null;
-    } catch (error) {
-        console.error('Error getting chat by ID:', error);
-        throw error;
-    }
-}
 
 /**
  * ユーザー ID で全チャットレコードを取得する

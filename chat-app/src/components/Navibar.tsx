@@ -14,7 +14,9 @@ const Navibar: React.FC = () => {
   const { data: chats } = useQuery({
     queryKey: ["chats"],
     queryFn: async () => {
-      return axios.get(`/api/chats?userId=${auth.user?.profile.sub}`).then(res => res.data);
+      return axios.get('/api/chats', {
+        headers: { Authorization: `Bearer ${auth.user?.access_token}` },
+      }).then(res => res.data);
     }
   });
 

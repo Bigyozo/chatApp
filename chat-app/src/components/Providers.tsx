@@ -5,8 +5,8 @@ import QueryClientProvider from "./QueryClientProvider";
 import AuthGuard from "./AuthGuard";
 
 const cognitoAuthConfig = {
-  authority: "https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_Awe67tW4x",
-  client_id: "1e52kb2ro0l5a8n6magqipfh58",
+  authority: process.env.NEXT_PUBLIC_COGNITO_AUTHORITY!,
+  client_id: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!,
   redirect_uri: process.env.NEXT_PUBLIC_REDIRECT_URL,
   response_type: "code",
   scope: "phone openid email",

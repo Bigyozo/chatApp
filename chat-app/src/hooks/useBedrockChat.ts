@@ -22,7 +22,7 @@ export interface Message {
 /**
  * Bedrock へのメッセージ送信・ストリーミング受信・履歴管理を行うカスタムフック
  */
-export function useBedrockChat(chatId: string) {
+export function useBedrockChat(chatId: string, accessToken: string) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
@@ -70,6 +70,7 @@ export function useBedrockChat(chatId: string) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({
                     messages: allMessages,
@@ -142,7 +143,7 @@ export function useBedrockChat(chatId: string) {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, chatId]);
+    }, [messages, chatId, accessToken]);
 
     /** メッセージ一覧をリセットする */
     const clearMessages = useCallback(() => {

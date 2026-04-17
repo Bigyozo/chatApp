@@ -1,70 +1,67 @@
 import {
-    createChat, deleteChat, getAllChats,
+    createChat, deleteChat,
     getChatsByUserId,
     getChatsByUserIdAndChatId, updateChat
 } from '@/lib/dynamodb';
+import { getUserIdFromRequest } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
+
+/** 指定チャットが userId に属するか確認する */
+async function verifyOwnership(userId: string, chatId: string): Promise<boolean> {
+    const chats = await getChatsByUserIdAndChatId(userId, chatId);
+    return chats.length > 0;
+}
 
 /**
  * GET /api/chats
  * クエリパラメータ:
- *   - chatId: 単一のチャットレコードを取得
- *   - userId: 該当ユーザーの全チャットレコードを取得
- *   - all: true 全チャットレコードを取得
+ *   - chatId: 単一のチャットレコードを取得（所有者確認あり）
+ *   - (なし): 自分の全チャットレコードを取得
  */
 export async function GET(request: NextRequest) {
+    let userId: string;
     try {
-        const searchParams = request.nextUrl.searchParams;
-        const chatId = searchParams.get('chatId');
-        const userId = searchParams.get('userId');
-        const all = searchParams.get('all');
+        userId = await getUserIdFromRequest(request);
+    } catch {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-        if(!userId) {
-            return NextResponse.json(
-                { error: 'Unauthorized: userId is required' },
-                { status: 401 }
-            );
-        }
+    try {
+        const chatId = request.nextUrl.searchParams.get('chatId');
 
-        if (chatId && userId) {
+        if (chatId) {
             const chats = await getChatsByUserIdAndChatId(userId, chatId);
             return NextResponse.json(chats, { status: 200 });
-        }else if (userId) {
+        } else {
             const chats = await getChatsByUserId(userId);
             return NextResponse.json(chats, { status: 200 });
         }
-        else if (all === 'true') {
-            const chats = await getAllChats();
-            return NextResponse.json(chats, { status: 200 });
-        } else {
-            return NextResponse.json(
-                { error: 'Missing required query parameters' },
-                { status: 400 }
-            );
-        }
     } catch (error) {
         console.error('API error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
-
 
 /**
  * POST /api/chats
  * 新しいチャットレコードを作成する
- * リクエストボディ: { userId: string, title: string, model: string }
+ * リクエストボディ: { title: string, model: string }
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    let userId: string;
+    try {
+        userId = await getUserIdFromRequest(req);
+    } catch {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const body = await req.json();
-        const { userId, title, model } = body;
+        const { title, model } = body;
 
-        if (!userId || !title || !model) {
+        if (!title || !model) {
             return NextResponse.json(
-                { error: "userId, title, and model are required" },
+                { error: 'title and model are required' },
                 { status: 400 }
             );
         }
@@ -72,69 +69,76 @@ export async function POST(req: Request) {
         const newChat = await createChat(userId, title, model);
         return NextResponse.json(newChat, { status: 200 });
     } catch (error) {
-        console.error("Error in POST /api/database:", error);
-        return NextResponse.json(
-            { error: "Failed to create chat" },
-            { status: 500 }
-        );
+        console.error('Error in POST /api/chats:', error);
+        return NextResponse.json({ error: 'Failed to create chat' }, { status: 500 });
     }
 }
 
 /**
  * PUT /api/chats
- * チャットレコードを更新する
+ * チャットレコードを更新する（所有者のみ）
  * リクエストボディ: { chatId: string, updates: Partial<ChatModel> }
  */
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
+    let userId: string;
+    try {
+        userId = await getUserIdFromRequest(req);
+    } catch {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const body = await req.json();
         const { chatId, updates } = body;
 
         if (!chatId || !updates) {
             return NextResponse.json(
-                { error: "chatId and updates are required" },
+                { error: 'chatId and updates are required' },
                 { status: 400 }
             );
+        }
+
+        if (!await verifyOwnership(userId, chatId)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const updatedChat = await updateChat(chatId, updates);
         return NextResponse.json(updatedChat, { status: 200 });
     } catch (error) {
-        console.error("Error in PUT /api/database:", error);
-        return NextResponse.json(
-            { error: "Failed to update chat" },
-            { status: 500 }
-        );
+        console.error('Error in PUT /api/chats:', error);
+        return NextResponse.json({ error: 'Failed to update chat' }, { status: 500 });
     }
 }
 
 /**
  * DELETE /api/chats
- * チャットレコードを削除する
+ * チャットレコードを削除する（所有者のみ）
  * リクエストボディ: { chatId: string }
  */
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
+    let userId: string;
+    try {
+        userId = await getUserIdFromRequest(req);
+    } catch {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const body = await req.json();
         const { chatId } = body;
 
         if (!chatId) {
-            return NextResponse.json(
-                { error: "chatId is required" },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'chatId is required' }, { status: 400 });
+        }
+
+        if (!await verifyOwnership(userId, chatId)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         await deleteChat(chatId);
-        return NextResponse.json(
-            { message: "Chat deleted successfully" },
-            { status: 200 }
-        );
+        return NextResponse.json({ message: 'Chat deleted successfully' }, { status: 200 });
     } catch (error) {
-        console.error("Error in DELETE /api/database:", error);
-        return NextResponse.json(
-            { error: "Failed to delete chat" },
-            { status: 500 }
-        );
+        console.error('Error in DELETE /api/chats:', error);
+        return NextResponse.json({ error: 'Failed to delete chat' }, { status: 500 });
     }
 }

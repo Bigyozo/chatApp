@@ -9,6 +9,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
+
 export default function Page() {
 
   const [input, setInput] = useState("");
@@ -25,20 +26,18 @@ export default function Page() {
 
   const { mutate: createChat } = useMutation({
     mutationFn: async (input: string) => {
-      return axios.post("/api/chats", { userId: auth.user?.profile.sub, title: input, model });
+      return axios.post("/api/chats", { title: input, model }, {
+        headers: { Authorization: `Bearer ${auth.user?.access_token}` },
+      });
     },
     onSuccess: (res) => {
-      console.log("Mutation successful:", res);
       router.push(`/chat/${res.data.id}?new=true`);
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     }
   });
 
   const handleSubmit = () => {
-    if (!input.trim()) {
-      console.log("Input is empty");
-      return;
-    }
+    if (!input.trim()) return;
     createChat(input);
   };
 

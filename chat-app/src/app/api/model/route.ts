@@ -1,5 +1,7 @@
-import { createMessage } from '@/lib/dynamodb';
+import { createMessage, getChatsByUserIdAndChatId } from '@/lib/dynamodb';
+import { getUserIdFromRequest } from '@/lib/auth';
 import { BedrockRuntimeClient, ConverseStreamCommand } from '@aws-sdk/client-bedrock-runtime';
+import { NextRequest } from 'next/server';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -41,16 +43,30 @@ function resolveModelId(model?: string): string {
  * POST /api/model
  * Bedrock Converse Stream API を使ってメッセージを送信し、ストリーミングレスポンスを返す
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    let userId: string;
+    try {
+        userId = await getUserIdFromRequest(req);
+    } catch {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+
     const { messages, chat_id, model } = await req.json();
 
-    console.log('Received messages count:', messages.length);
-    console.log('All messages:', JSON.stringify(messages, null, 2));
+    // チャットの所有者確認
+    const ownedChats = await getChatsByUserIdAndChatId(userId, chat_id);
+    if (ownedChats.length === 0) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
 
     const lastMessage = messages[messages.length - 1];
     const lastMessageText = lastMessage.parts?.[0]?.text || lastMessage.content || '';
-
-    console.log('Last message text:', lastMessageText);
 
     // ユーザーメッセージをデータベースに保存する
     if (lastMessageText.trim()) {
@@ -62,7 +78,6 @@ export async function POST(req: Request) {
         .map((msg: any) => {
             // メッセージテキストを取得する
             const text = msg.parts?.[0]?.text || msg.content || '';
-
             return {
                 role: msg.role === 'user' ? 'user' : 'assistant',
                 content: [{ text: text.trim() }]
@@ -72,15 +87,11 @@ export async function POST(req: Request) {
 
     // 少なくとも1件のメッセージがあることを確認する
     if (bedrockMessages.length === 0) {
-        console.error('No valid messages after filtering');
         return new Response(JSON.stringify({ error: 'No valid messages' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' },
         });
     }
-
-    console.log('Bedrock messages count:', bedrockMessages.length);
-    console.log('Bedrock messages:', JSON.stringify(bedrockMessages, null, 2));
 
     try {
         // Converse Stream API を使用する
@@ -150,13 +161,8 @@ export async function POST(req: Request) {
         });
     } catch (error) {
         console.error('Bedrock API error:', error);
-        // より詳細なエラー情報を表示する
         const errorMessage = error instanceof Error ? error.message : 'Failed to generate response';
-        console.error('Error details:', errorMessage);
-        return new Response(JSON.stringify({
-            error: errorMessage,
-            details: error
-        }), {
+        return new Response(JSON.stringify({ error: errorMessage }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });
