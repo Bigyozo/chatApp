@@ -5,6 +5,22 @@ import {
 } from '@/lib/dynamodb';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const ALLOWED_MODELS = ['Gemma 3 4B', 'Gemma 3 27B', 'gpt-oss-20b', 'DeepSeek-V3.1'] as const;
+
+const createChatSchema = z.object({
+    title: z.string().min(1).max(200),
+    model: z.enum(ALLOWED_MODELS),
+});
+
+const updateChatSchema = z.object({
+    chatId: z.string().min(1),
+    updates: z.object({
+        title: z.string().min(1).max(200).optional(),
+        model: z.enum(ALLOWED_MODELS).optional(),
+    }),
+});
 
 /** 指定チャットが userId に属するか確認する */
 async function verifyOwnership(userId: string, chatId: string): Promise<boolean> {
@@ -56,15 +72,11 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const body = await req.json();
-        const { title, model } = body;
-
-        if (!title || !model) {
-            return NextResponse.json(
-                { error: 'title and model are required' },
-                { status: 400 }
-            );
+        const parsed = createChatSchema.safeParse(await req.json());
+        if (!parsed.success) {
+            return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
         }
+        const { title, model } = parsed.data;
 
         const newChat = await createChat(userId, title, model);
         return NextResponse.json(newChat, { status: 200 });
@@ -88,15 +100,11 @@ export async function PUT(req: NextRequest) {
     }
 
     try {
-        const body = await req.json();
-        const { chatId, updates } = body;
-
-        if (!chatId || !updates) {
-            return NextResponse.json(
-                { error: 'chatId and updates are required' },
-                { status: 400 }
-            );
+        const parsed = updateChatSchema.safeParse(await req.json());
+        if (!parsed.success) {
+            return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
         }
+        const { chatId, updates } = parsed.data;
 
         if (!await verifyOwnership(userId, chatId)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

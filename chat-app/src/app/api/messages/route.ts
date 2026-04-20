@@ -7,6 +7,20 @@ import {
     deleteMessage,
 } from '@/lib/dynamodb';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { z } from 'zod';
+
+const createMessageSchema = z.object({
+    chatId: z.string().min(1),
+    role: z.enum(['user', 'assistant']),
+    content: z.string().min(1).max(10_000),
+});
+
+const updateMessageSchema = z.object({
+    messageId: z.string().min(1),
+    updates: z.object({
+        content: z.string().min(1).max(10_000).optional(),
+    }),
+});
 
 /** 指定チャットが userId に属するか確認する */
 async function verifyOwnership(userId: string, chatId: string): Promise<boolean> {
@@ -58,13 +72,17 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const body = await request.json();
+        const parsed = createMessageSchema.safeParse(await request.json());
+        if (!parsed.success) {
+            return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
+        }
+        const { chatId, role, content } = parsed.data;
 
-        if (!await verifyOwnership(userId, body.chatId)) {
+        if (!await verifyOwnership(userId, chatId)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const message = await createMessage(body.chatId, body.role, body.content);
+        const message = await createMessage(chatId, role, content);
         return NextResponse.json(message, { status: 201 });
     } catch (error) {
         console.error('API error:', error);
@@ -85,10 +103,11 @@ export async function PUT(request: NextRequest) {
     }
 
     try {
-        const { messageId, updates } = await request.json();
-        if (!messageId) {
-            return NextResponse.json({ error: 'messageId is required' }, { status: 400 });
+        const parsed = updateMessageSchema.safeParse(await request.json());
+        if (!parsed.success) {
+            return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
         }
+        const { messageId, updates } = parsed.data;
         const message = await updateMessage(messageId, updates);
         return NextResponse.json(message);
     } catch (error) {

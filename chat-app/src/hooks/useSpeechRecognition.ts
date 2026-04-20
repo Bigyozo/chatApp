@@ -45,11 +45,18 @@ export function useSpeechRecognition({
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null); // uses local interface above
+  const onResultRef = useRef(onResult);
+
+  useEffect(() => { onResultRef.current = onResult; }, [onResult]);
 
   useEffect(() => {
     const SpeechRecognitionAPI =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     setIsSupported(!!SpeechRecognitionAPI);
+  }, []);
+
+  useEffect(() => {
+    return () => { recognitionRef.current?.stop(); };
   }, []);
 
   const startListening = useCallback(() => {
@@ -66,7 +73,7 @@ export function useSpeechRecognition({
       const transcript = Array.from(event.results)
         .map((result) => result[0].transcript)
         .join('');
-      onResult?.(transcript);
+      onResultRef.current?.(transcript);
     };
 
     recognition.onend = () => {
@@ -80,7 +87,7 @@ export function useSpeechRecognition({
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [lang, continuous, onResult]);
+  }, [lang, continuous]);
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();

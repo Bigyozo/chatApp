@@ -1,7 +1,22 @@
 import { createMessage, getChatsByUserIdAndChatId } from '@/lib/dynamodb';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { checkRateLimit, RateLimitError } from '@/lib/rateLimit';
 import { BedrockRuntimeClient, ConverseStreamCommand } from '@aws-sdk/client-bedrock-runtime';
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
+
+const ALLOWED_MODELS = ['Gemma 3 4B', 'Gemma 3 27B', 'gpt-oss-20b', 'DeepSeek-V3.1'] as const;
+
+const messagePartSchema = z.object({ type: z.string(), text: z.string() });
+const modelRequestSchema = z.object({
+    chat_id: z.string().min(1),
+    model: z.enum(ALLOWED_MODELS),
+    messages: z.array(z.object({
+        role: z.enum(['user', 'assistant']),
+        parts: z.array(messagePartSchema).optional(),
+        content: z.string().optional(),
+    })).min(1),
+});
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -54,7 +69,25 @@ export async function POST(req: NextRequest) {
         });
     }
 
-    const { messages, chat_id, model } = await req.json();
+    try {
+        checkRateLimit(userId);
+    } catch (e) {
+        if (e instanceof RateLimitError) {
+            return new Response(JSON.stringify({ error: 'Too many requests' }), {
+                status: 429,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+    }
+
+    const parsed = modelRequestSchema.safeParse(await req.json());
+    if (!parsed.success) {
+        return new Response(JSON.stringify({ error: parsed.error.issues }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+    const { messages, chat_id, model } = parsed.data;
 
     // チャットの所有者確認
     const ownedChats = await getChatsByUserIdAndChatId(userId, chat_id);
@@ -75,15 +108,15 @@ export async function POST(req: NextRequest) {
 
     // メッセージを Bedrock Converse API がサポートする形式に変換する
     const bedrockMessages = messages
-        .map((msg: any) => {
+        .map((msg) => {
             // メッセージテキストを取得する
             const text = msg.parts?.[0]?.text || msg.content || '';
             return {
-                role: msg.role === 'user' ? 'user' : 'assistant',
+                role: msg.role as 'user' | 'assistant',
                 content: [{ text: text.trim() }]
             };
         })
-        .filter((msg: any) => msg.content[0].text.length > 0); // 空メッセージを除外する
+        .filter((msg) => msg.content[0].text.length > 0); // 空メッセージを除外する
 
     // 少なくとも1件のメッセージがあることを確認する
     if (bedrockMessages.length === 0) {
@@ -161,8 +194,7 @@ export async function POST(req: NextRequest) {
         });
     } catch (error) {
         console.error('Bedrock API error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to generate response';
-        return new Response(JSON.stringify({ error: errorMessage }), {
+        return new Response(JSON.stringify({ error: 'Failed to generate response' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });

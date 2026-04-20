@@ -1,5 +1,6 @@
 'use client';
 
+import { ErrorDialog } from '@/components/ErrorDialog';
 import { useEffect } from 'react';
 import { useRef } from 'react';
 import { useState } from 'react';
@@ -50,7 +51,7 @@ export default function Page() {
     });
 
     // カスタムの Bedrock Chat フックを使用する
-    const { messages, sendMessage, isLoading, loadHistory, clearMessages } = useBedrockChat(
+    const { messages, sendMessage, isLoading, error, clearError, loadHistory, clearMessages } = useBedrockChat(
         typeof chat_id === 'string' ? chat_id : '',
         accessToken
     );
@@ -123,6 +124,11 @@ export default function Page() {
 
     return (
         <div className='flex flex-col h-screen justify-between items-center'>
+            <ErrorDialog
+                open={!!error}
+                message={error?.message ?? ''}
+                onClose={clearError}
+            />
             <div className='flex flex-col w-2/3 gap-8 overflow-y-auto justify-between flex-1'>
                 <div className='h-4'></div>
                 <div className='flex flex-col w-2/3 gap-8 flex-1'></div>

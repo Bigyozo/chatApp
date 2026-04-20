@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 // crypto.randomUUID が使えない環境向けのフォールバック
 function generateId(): string {
@@ -26,6 +26,11 @@ export function useBedrockChat(chatId: string, accessToken: string) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
+    const messagesRef = useRef<Message[]>([]);
+
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
 
     const sendMessage = useCallback(async (text: string, model: string) => {
         const trimmedText = text.trim();
@@ -58,7 +63,7 @@ export function useBedrockChat(chatId: string, accessToken: string) {
 
         try {
             // リクエストメッセージリストを構築する（履歴含む）- 空メッセージを除外
-            const allMessages = [...messages, userMessage]
+            const allMessages = [...messagesRef.current, userMessage]
                 .filter(msg => msg.content && msg.content.trim().length > 0)
                 .map(msg => ({
                     role: msg.role,
@@ -80,7 +85,12 @@ export function useBedrockChat(chatId: string, accessToken: string) {
             });
 
             if (!response.ok) {
-                throw new Error(`API request failed: ${response.statusText}`);
+                const body = await response.json().catch(() => null);
+                const detail = body?.error;
+                const message = Array.isArray(detail)
+                    ? detail.map((i: { message: string }) => i.message).join('\n')
+                    : typeof detail === 'string' ? detail : response.statusText;
+                throw new Error(message);
             }
 
             if (!response.body) {
@@ -143,11 +153,14 @@ export function useBedrockChat(chatId: string, accessToken: string) {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, chatId, accessToken]);
+    }, [chatId, accessToken]);
 
-    /** メッセージ一覧をリセットする */
     const clearMessages = useCallback(() => {
         setMessages([]);
+    }, []);
+
+    const clearError = useCallback(() => {
+        setError(null);
     }, []);
 
     /** DynamoDB から取得した履歴メッセージをセットする */
@@ -161,6 +174,7 @@ export function useBedrockChat(chatId: string, accessToken: string) {
         isLoading,
         error,
         clearMessages,
+        clearError,
         loadHistory
     };
 }

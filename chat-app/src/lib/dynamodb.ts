@@ -120,20 +120,29 @@ export async function createChat(userId: string, title: string, model: string): 
     }
 }
 
+const CHAT_MUTABLE_FIELDS: (keyof ChatModel)[] = ['title', 'model'];
+
 /**
- * チャットレコードを更新する
+ * チャットレコードを更新する（title / model のみ更新可能）
  */
 export async function updateChat(chatId: string, updates: Partial<ChatModel>): Promise<ChatModel> {
     try {
+        const safeUpdates = Object.fromEntries(
+            CHAT_MUTABLE_FIELDS.filter(k => k in updates).map(k => [k, updates[k]])
+        ) as Partial<ChatModel>;
+
+        if (Object.keys(safeUpdates).length === 0) {
+            throw new Error('No valid fields to update');
+        }
+
+        const keys = Object.keys(safeUpdates);
         const command = new UpdateCommand({
             TableName: CHAT_TABLE_NAME,
             Key: { id: chatId },
-            UpdateExpression: 'SET ' + Object.keys(updates)
-                .map((key, i) => `${key} = :val${i}`)
-                .join(', '),
-            ExpressionAttributeValues: Object.keys(updates).reduce((acc, key, i) => ({
+            UpdateExpression: 'SET ' + keys.map((key, i) => `${key} = :val${i}`).join(', '),
+            ExpressionAttributeValues: keys.reduce((acc, key, i) => ({
                 ...acc,
-                [`:val${i}`]: updates[key as keyof ChatModel],
+                [`:val${i}`]: safeUpdates[key as keyof ChatModel],
             }), {}),
             ReturnValues: 'ALL_NEW',
         });
@@ -241,20 +250,29 @@ export async function createMessage(chatId: string, role: 'user' | 'assistant', 
     }
 }
 
+const MESSAGE_MUTABLE_FIELDS: (keyof MessageModel)[] = ['content'];
+
 /**
- * メッセージを更新する
+ * メッセージを更新する（content のみ更新可能）
  */
 export async function updateMessage(messageId: string, updates: Partial<MessageModel>): Promise<MessageModel> {
     try {
+        const safeUpdates = Object.fromEntries(
+            MESSAGE_MUTABLE_FIELDS.filter(k => k in updates).map(k => [k, updates[k]])
+        ) as Partial<MessageModel>;
+
+        if (Object.keys(safeUpdates).length === 0) {
+            throw new Error('No valid fields to update');
+        }
+
+        const keys = Object.keys(safeUpdates);
         const command = new UpdateCommand({
             TableName: MESSAGE_TABLE_NAME,
             Key: { id: messageId },
-            UpdateExpression: 'SET ' + Object.keys(updates)
-                .map((key, i) => `${key} = :val${i}`)
-                .join(', '),
-            ExpressionAttributeValues: Object.keys(updates).reduce((acc, key, i) => ({
+            UpdateExpression: 'SET ' + keys.map((key, i) => `${key} = :val${i}`).join(', '),
+            ExpressionAttributeValues: keys.reduce((acc, key, i) => ({
                 ...acc,
-                [`:val${i}`]: updates[key as keyof MessageModel],
+                [`:val${i}`]: safeUpdates[key as keyof MessageModel],
             }), {}),
             ReturnValues: 'ALL_NEW',
         });

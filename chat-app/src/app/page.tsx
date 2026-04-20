@@ -1,5 +1,6 @@
 'use client'
 
+import { ErrorDialog } from "@/components/ErrorDialog";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import EastIcon from "@mui/icons-material/East";
 import MicIcon from "@mui/icons-material/Mic";
@@ -14,6 +15,7 @@ export default function Page() {
 
   const [input, setInput] = useState("");
   const [model, setModel] = useState("Gemma 3 4B");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { isListening, isSupported, toggle: toggleSpeech } = useSpeechRecognition({
     onResult: (transcript) => setInput((prev) => prev + transcript),
@@ -33,7 +35,18 @@ export default function Page() {
     onSuccess: (res) => {
       router.push(`/chat/${res.data.id}?new=true`);
       queryClient.invalidateQueries({ queryKey: ["chats"] });
-    }
+    },
+    onError: (err: unknown) => {
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.error;
+        const message = Array.isArray(detail)
+          ? detail.map((i: { message: string }) => i.message).join('\n')
+          : typeof detail === 'string' ? detail : 'チャットの作成に失敗しました';
+        setErrorMessage(message);
+      } else {
+        setErrorMessage('チャットの作成に失敗しました');
+      }
+    },
   });
 
   const handleSubmit = () => {
@@ -43,6 +56,11 @@ export default function Page() {
 
   return (
     <div className="h-screen flex flex-col items-center">
+      <ErrorDialog
+        open={!!errorMessage}
+        message={errorMessage}
+        onClose={() => setErrorMessage("")}
+      />
       <div className="h-1/5"></div>
       <div className="w-1/2">
         <p className="text-bold text-2xl text-center">質問をしてみましょう</p>
