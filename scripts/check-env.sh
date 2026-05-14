@@ -26,12 +26,12 @@ echo ""
 echo "📋 環境変数の状態:"
 echo "================================"
 
-# AWS Region の確認
+# AWS Region の確認（未設定の場合は EC2 IMDS から自動取得）
 AWS_REGION=$(docker-compose exec -T chat-app sh -c 'echo $AWS_REGION')
 if [ -n "$AWS_REGION" ]; then
     echo -e "${GREEN}✓${NC} AWS_REGION: $AWS_REGION"
 else
-    echo -e "${RED}✗${NC} AWS_REGION: 未設定"
+    echo -e "${YELLOW}⚠${NC} AWS_REGION: 未設定（EC2 IMDS から自動取得）"
 fi
 
 # AWS Access Key ID の確認（先頭数文字のみ表示）
@@ -79,6 +79,7 @@ docker-compose logs --tail=20 chat-app
 
 echo ""
 echo "💡 ヒント:"
-echo "  - AWS 認証情報が未設定の場合は .env ファイルを確認してください"
-echo "  - IAM ロールを使用する場合は EC2 インスタンスに正しいロールがアタッチされているか確認してください"
+echo "  - AWS 認証情報が未設定の場合は EC2 IAM ロールが正しくアタッチされているか確認してください"
+echo "  - AWS_REGION が未設定でも EC2 インスタンスのリージョンが自動的に使用されます"
+echo "  - Cognito 設定は AWS SSM Parameter Store (/chatapp/*) から取得されます"
 echo "  - 全ログを表示するには: docker-compose logs -f chat-app"

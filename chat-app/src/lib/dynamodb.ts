@@ -14,7 +14,7 @@ import { ChatModel, MessageModel } from '../common/type';
 // AWS 認証情報の環境変数が提供されていれば使用する
 // それ以外はデフォルトの認証チェーン（IAM ロール、環境変数など）を使用する
 const clientConfig: any = {
-    region: process.env.AWS_REGION || 'ap-northeast-1',
+    ...(process.env.AWS_REGION ? { region: process.env.AWS_REGION } : {}),
 };
 
 // AWS 認証情報が明示的に設定されている場合のみ credentials を追加する

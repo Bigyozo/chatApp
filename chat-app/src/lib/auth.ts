@@ -1,12 +1,18 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
 import { NextRequest } from 'next/server';
+import { getCognitoConfig } from './ssm';
 
-const COGNITO_AUTHORITY = process.env.NEXT_PUBLIC_COGNITO_AUTHORITY!;
+let jwks: JWTVerifyGetKey | null = null;
+let jwksAuthority: string | null = null;
 
-// JWKS はモジュールロード時に一度だけ初期化し、レスポンスをキャッシュする
-const JWKS = createRemoteJWKSet(
-    new URL(`${COGNITO_AUTHORITY}/.well-known/jwks.json`)
-);
+async function getJwks(): Promise<{ jwks: JWTVerifyGetKey; authority: string }> {
+    const { authority } = await getCognitoConfig();
+    if (!jwks || jwksAuthority !== authority) {
+        jwks = createRemoteJWKSet(new URL(`${authority}/.well-known/jwks.json`));
+        jwksAuthority = authority;
+    }
+    return { jwks, authority };
+}
 
 /**
  * Authorization ヘッダーの Bearer トークンを Cognito JWKS で検証し、userId (sub) を返す
@@ -18,8 +24,9 @@ export async function getUserIdFromRequest(req: NextRequest): Promise<string> {
         throw new Error('Unauthorized');
     }
     const token = authHeader.slice(7);
-    const { payload } = await jwtVerify(token, JWKS, {
-        issuer: COGNITO_AUTHORITY,
+    const { jwks: keySet, authority } = await getJwks();
+    const { payload } = await jwtVerify(token, keySet, {
+        issuer: authority,
     });
     if (!payload.sub) throw new Error('Token missing sub claim');
     return payload.sub;
