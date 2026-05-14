@@ -23,7 +23,7 @@ export const maxDuration = 30;
 
 // Bedrock クライアントを初期化する
 const bedrockClient = new BedrockRuntimeClient({
-    region: process.env.AWS_REGION || 'ap-northeast-1',
+    ...(process.env.AWS_REGION ? { region: process.env.AWS_REGION } : {}),
     credentials: process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY ? {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,

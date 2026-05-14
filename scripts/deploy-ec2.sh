@@ -27,9 +27,9 @@ echo -e "${GREEN}✓ .env ファイルを確認しました${NC}"
 echo -e "${YELLOW}🔍 環境変数を検証中...${NC}"
 source .env
 
-# AWS Region の確認
+# AWS Region の確認（未設定の場合は EC2 IMDS から自動取得）
 if [ -z "$AWS_REGION" ]; then
-    echo -e "${YELLOW}⚠ 警告: AWS_REGION が未設定です。デフォルト値 us-east-1 を使用します${NC}"
+    echo -e "${YELLOW}⚠ AWS_REGION が未設定です。EC2 IMDS からリージョンを自動取得します${NC}"
 fi
 
 # AWS 認証情報の確認（IAM ロールを使用しない場合）
@@ -43,32 +43,12 @@ if [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ "$AWS_SECRET_ACCESS_KEY" == "your_aws_se
     echo -e "${YELLOW}⚠ 警告: AWS_SECRET_ACCESS_KEY が正しく設定されていません${NC}"
 fi
 
-# NEXT_PUBLIC_* の確認（ビルド時にクライアントバンドルへ埋め込まれるため必須）
-if [ -z "$NEXT_PUBLIC_REDIRECT_URL" ]; then
-    echo -e "${RED}❌ エラー: NEXT_PUBLIC_REDIRECT_URL が未設定です${NC}"
-    echo ".env に以下を追加してください: NEXT_PUBLIC_REDIRECT_URL=https://your-domain.com"
-    exit 1
-fi
-
-if [ -z "$NEXT_PUBLIC_COGNITO_AUTHORITY" ]; then
-    echo -e "${RED}❌ エラー: NEXT_PUBLIC_COGNITO_AUTHORITY が未設定です${NC}"
-    echo ".env に以下を追加してください: NEXT_PUBLIC_COGNITO_AUTHORITY=https://cognito-idp.<region>.amazonaws.com/<userPoolId>"
-    exit 1
-fi
-
-if [ -z "$NEXT_PUBLIC_COGNITO_CLIENT_ID" ]; then
-    echo -e "${RED}❌ エラー: NEXT_PUBLIC_COGNITO_CLIENT_ID が未設定です${NC}"
-    echo ".env に以下を追加してください: NEXT_PUBLIC_COGNITO_CLIENT_ID=<your-client-id>"
-    exit 1
-fi
-
 PORT="${PORT:-3001}"
 
-echo -e "${GREEN}✓ NEXT_PUBLIC_REDIRECT_URL=${NEXT_PUBLIC_REDIRECT_URL}${NC}"
-echo -e "${GREEN}✓ NEXT_PUBLIC_COGNITO_AUTHORITY=${NEXT_PUBLIC_COGNITO_AUTHORITY}${NC}"
-echo -e "${GREEN}✓ NEXT_PUBLIC_COGNITO_CLIENT_ID=${NEXT_PUBLIC_COGNITO_CLIENT_ID}${NC}"
+# Cognito 設定は SSM Parameter Store から取得されるため、ここでの検証は不要
 echo -e "${GREEN}✓ PORT=${PORT}${NC}"
 echo -e "${GREEN}✓ 環境変数の検証完了${NC}"
+echo -e "${YELLOW}  Cognito 設定は SSM Parameter Store (/chatapp/*) からランタイムに取得されます${NC}"
 
 # Docker がインストールされているか確認
 if ! command -v docker &> /dev/null; then
@@ -86,9 +66,6 @@ docker-compose down 2>/dev/null || true
 # 新しいイメージをビルド
 echo -e "${YELLOW}🔨 Docker イメージをビルド中...${NC}"
 docker build \
-    --build-arg NEXT_PUBLIC_REDIRECT_URL="$NEXT_PUBLIC_REDIRECT_URL" \
-    --build-arg NEXT_PUBLIC_COGNITO_AUTHORITY="$NEXT_PUBLIC_COGNITO_AUTHORITY" \
-    --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID="$NEXT_PUBLIC_COGNITO_CLIENT_ID" \
     --build-arg PORT="$PORT" \
     -t chat-app:latest .
 

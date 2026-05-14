@@ -12,7 +12,7 @@ const { BedrockClient, ListFoundationModelsCommand } = require('@aws-sdk/client-
 require('dotenv').config({ path: '.env.local' });
 
 const client = new BedrockClient({
-    region: process.env.AWS_REGION || 'ap-northeast-1',
+    ...(process.env.AWS_REGION ? { region: process.env.AWS_REGION } : {}),
     credentials: process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY ? {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -23,7 +23,7 @@ async function listModels() {
     console.log('='.repeat(80));
     console.log('AWS Bedrock 可用模型列表');
     console.log('='.repeat(80));
-    console.log('区域:', process.env.AWS_REGION || 'ap-northeast-1');
+    console.log('区域:', process.env.AWS_REGION || '(EC2 IMDS から自動取得)');
     console.log('='.repeat(80));
     console.log('');
 
