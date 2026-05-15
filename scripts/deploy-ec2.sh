@@ -13,34 +13,12 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# .env ファイルの確認
-if [ ! -f .env ]; then
-    echo -e "${RED}❌ エラー: .env ファイルが見つかりません${NC}"
-    echo ".env ファイルを作成して必要な環境変数を設定してください"
-    echo "参考: cp .env.example .env"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ .env ファイルを確認しました${NC}"
-
 # 環境変数の検証
 echo -e "${YELLOW}🔍 環境変数を検証中...${NC}"
-source .env
 
-# AWS Region の確認（未設定の場合は EC2 IMDS から自動取得）
+# AWS_REGION: 未設定の場合は EC2 IMDS から自動取得
 if [ -z "$AWS_REGION" ]; then
     echo -e "${YELLOW}⚠ AWS_REGION が未設定です。EC2 IMDS からリージョンを自動取得します${NC}"
-fi
-
-# AWS 認証情報の確認（IAM ロールを使用しない場合）
-if [ -z "$AWS_ACCESS_KEY_ID" ] || [ "$AWS_ACCESS_KEY_ID" == "your_aws_access_key_id" ]; then
-    echo -e "${YELLOW}⚠ 警告: AWS_ACCESS_KEY_ID が正しく設定されていません${NC}"
-    echo -e "${YELLOW}  EC2 上で IAM ロールを使用する場合はこの警告を無視してください${NC}"
-    echo -e "${YELLOW}  それ以外の場合は .env に正しい AWS 認証情報を設定してください${NC}"
-fi
-
-if [ -z "$AWS_SECRET_ACCESS_KEY" ] || [ "$AWS_SECRET_ACCESS_KEY" == "your_aws_secret_access_key" ]; then
-    echo -e "${YELLOW}⚠ 警告: AWS_SECRET_ACCESS_KEY が正しく設定されていません${NC}"
 fi
 
 PORT="${PORT:-3001}"

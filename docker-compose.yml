@@ -9,7 +9,6 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=${PORT:-3001}
-      - AWS_REGION=${AWS_REGION:-ap-northeast-1}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:$$PORT/api/health || exit 1"]
